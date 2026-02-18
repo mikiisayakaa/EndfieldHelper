@@ -1,0 +1,39 @@
+# Build and distribution directories
+build/
+dist/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+endfield_helper.log
+
+# Data files
+*.json
+!requirements.txt
+!config.json
+!multiconfig.json
+!empty.txt
+!goods_ocr_results.json
+
+# Temporary files
+*.tmp
+temp/

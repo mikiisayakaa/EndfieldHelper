@@ -1,0 +1,9 @@
+pyautogui
+pynput
+pillow
+opencv-python
+opencv-contrib-python
+numpy
+easyocr
+mouse
+ahk
