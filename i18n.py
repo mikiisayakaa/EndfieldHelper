@@ -20,6 +20,8 @@ TRANSLATIONS = {
         "help": "Help",
         "open": "Open",
         "open_folder": "Open Folder",
+        "refresh": "Reload",
+        "save": "Save",
         
         # Buttons - Composite
         "save_composite": "Save Composite",
@@ -34,6 +36,8 @@ TRANSLATIONS = {
         "config_list": "Config List",
         "recording": "Recording",
         "composite": "Composite",
+        "edit": "Edit",
+        "edit_steps": "Steps",
         
         # Status messages
         "idle": "Idle",
@@ -54,6 +58,13 @@ TRANSLATIONS = {
         "config_exists": "Config already exists. Overwrite and re-record?",
         "clear_composite_list": "Clear the composite config list?",
         "open_in_editor": "Open in Default Editor",
+        "add_step": "Add Step",
+        "delete_step": "Delete Step",
+        "re_record": "Re-record",
+        "insert_above": "Insert Above",
+        "insert_below": "Insert Below",
+        "no_config_loaded": "No config loaded",
+        "load_config_first": "Please load a config first",
         
         # Instructions
         "composite_instructions": "Double-click configs from right panel to add • Double-click/Del to remove • ↑↓ to reorder",
@@ -163,6 +174,8 @@ TRANSLATIONS = {
         "help": "帮助",
         "open": "打开",
         "open_folder": "打开文件夹",
+        "refresh": "重新加载",
+        "save": "保存",
         
         # Buttons - Composite
         "save_composite": "保存组合配置",
@@ -170,6 +183,8 @@ TRANSLATIONS = {
         "clear": "清除",
         "up": "↑",
         "down": "↓",
+        "edit": "编辑",
+        "edit_steps": "步骤",
         
         # Frame titles
         "goods_template": "商品模板",
@@ -197,6 +212,13 @@ TRANSLATIONS = {
         "config_exists": "配置文件已存在。覆盖并重新录制?",
         "clear_composite_list": "清空组合配置列表?",
         "open_in_editor": "用默认编辑器打开",
+        "add_step": "添加步骤",
+        "delete_step": "删除步骤",
+        "re_record": "重新录制",
+        "insert_above": "在上方插入",
+        "insert_below": "在下方插入",
+        "no_config_loaded": "未加载配置",
+        "load_config_first": "请先加载配置",
         
         # Instructions
         "composite_instructions": "从右边面板双击配置添加 • 双击/删除键移除 • ↑↓重新排序",

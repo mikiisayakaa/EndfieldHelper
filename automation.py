@@ -219,7 +219,38 @@ class Recorder:
         if self.key_listener:
             self.key_listener.stop()
         
+        # Clean up internal hotkeys
+        # self._cleanup_internal_hotkeys()
+        
         return {"timeline": self.timeline}
+    
+    def _cleanup_internal_hotkeys(self) -> None:
+        """Remove internal hotkeys from timeline (Ctrl+X and OCR hotkeys)."""
+        if not self.timeline:
+            return
+        
+        # Step 1: Remove the last 2 operations (Ctrl+X stop hotkey)
+        if len(self.timeline) >= 2:
+            self.timeline = self.timeline[:-2]
+        
+        # Step 2: Find and remove hotkeys before OCR operations
+        # We need to iterate backwards and track which indices to remove
+        indices_to_remove = set()
+        
+        for i in range(len(self.timeline)):
+            event = self.timeline[i]
+            event_type = event.get("type", "")
+            
+            # Check if this is an OCR operation
+            if event_type.endswith("ocr"):
+                # Mark the 3 operations before this OCR for removal
+                # (These are the hotkey operations: Ctrl press, Shift press, key press)
+                for j in range(max(0, i - 3), i):
+                    indices_to_remove.add(j)
+        
+        # Remove marked operations (iterate backwards to preserve indices)
+        for i in sorted(indices_to_remove, reverse=True):
+            self.timeline.pop(i)
 
 
 def _sleep_with_stop(seconds: float, stop_check: Callable[[], bool] | None) -> None:

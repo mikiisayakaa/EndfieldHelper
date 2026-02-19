@@ -6,6 +6,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 import sys
+import webbrowser
 import os
 import ctypes
 from ctypes import wintypes
@@ -141,6 +142,7 @@ def start_gui() -> int:
     except tk.TclError:
         pass
     style.configure("Modern.TButton", padding=(10, 6), font=("Segoe UI", 9))
+    style.configure("Treeview", rowheight=25)  # Increase row height for better text display
 
     # Set window icon from icon.png
     try:
@@ -182,11 +184,21 @@ def start_gui() -> int:
     status_var = tk.StringVar(value=i18n.t("idle"))
     position_var = tk.StringVar(value="(0, 0)")
     click_hint_var = tk.StringVar(value="")
-    goods_template_var = tk.StringVar(value="gudi")
     config_comment_var = tk.StringVar(value="")  # Config comments
     config_folder = None  # Store the selected config folder
     config_files = []  # Store the list of config files
     composite_configs = []  # Store the list of configs in composite mode
+    edit_data = None  # Store the currently edited config data (dict or list)
+    edit_config_type = None  # Store the type: 'composite', 'timeline', or 'legacy'
+    re_recording_step_index = None  # Track which step is being re-recorded
+    re_recording_mode = None  # Track re-recording mode: 're-record', 'insert-above', 'insert-below'
+    ocr_operations = [
+        ("goods_ocr_gudi", "goods_ocr (gudi)"),
+        ("goods_ocr_wuling", "goods_ocr (wuling)"),
+        ("home_assist_ocr", "home_assist_ocr"),
+        ("qingbao_ocr", "qingbao_ocr"),
+    ]
+    active_ocr_operations: list[str] = []
     running = False
     stop_event = threading.Event()
     idle_listener = None
@@ -371,48 +383,6 @@ def start_gui() -> int:
         except Exception as e:
             app_logger.error(f"Failed to add comment field to {config_path}: {e}")
 
-    def trim_stop_hotkey(steps: list[dict] | dict) -> list[dict] | dict:
-        """Remove stop hotkey (Ctrl+X) from recorded steps."""
-        if isinstance(steps, dict):
-            # Timeline format - remove trailing key_release and key_press for Ctrl+X
-            timeline = steps.get("timeline", [])
-            if len(timeline) < 4:
-                return steps
-            
-            # Check if last events are ctrl release, x release (reverse of ctrl press, x press)
-            last = timeline[-1]
-            
-            # Find the Ctrl+X press events at the end and remove them
-            idx = len(timeline) - 1
-            while idx >= 0:
-                event = timeline[idx]
-                if event.get("type") == "key_release" and event.get("key") in ("ctrl", "ctrl_l", "ctrl_r", "x"):
-                    idx -= 1
-                elif event.get("type") == "key_press" and event.get("key") in ("ctrl", "ctrl_l", "ctrl_r", "x"):
-                    idx -= 1
-                else:
-                    break
-            
-            # Only trim if we found at least 4 ctrl+x events (2 presses + 2 releases)
-            if len(timeline) - idx - 1 >= 4:
-                steps["timeline"] = timeline[:idx + 1]
-            
-            return steps
-        else:
-            # Legacy list format
-            if len(steps) < 2:
-                return steps
-            last = steps[-1]
-            prev = steps[-2]
-            if (
-                last.get("action") == "key"
-                and last.get("key") == "x"
-                and prev.get("action") == "key"
-                and str(prev.get("key", "")).startswith("ctrl")
-            ):
-                return steps[:-2]
-            return steps
-
     def add_to_composite(config_path: str) -> None:
         """Add a config to the composite list."""
         nonlocal composite_configs
@@ -486,6 +456,65 @@ def start_gui() -> int:
         except Exception as e:
             app_logger.error(f"Failed to load composite config: {e}")
             return False
+
+    def get_ocr_label(operation_id: str) -> str:
+        for op_id, label in ocr_operations:
+            if op_id == operation_id:
+                return label
+        return operation_id
+
+    def refresh_ocr_active_list() -> None:
+        ocr_active_listbox.delete(0, tk.END)
+        for idx, op_id in enumerate(active_ocr_operations, 1):
+            ocr_active_listbox.insert(tk.END, f"{idx}: {get_ocr_label(op_id)}")
+
+    def add_active_ocr(operation_id: str) -> None:
+        if operation_id in active_ocr_operations:
+            status_var.set("OCR operation already active")
+            return
+        if len(active_ocr_operations) >= 10:
+            status_var.set("Active OCR list is full (max 10)")
+            return
+        active_ocr_operations.append(operation_id)
+        refresh_ocr_active_list()
+
+    def remove_active_ocr(index: int) -> None:
+        if 0 <= index < len(active_ocr_operations):
+            active_ocr_operations.pop(index)
+            refresh_ocr_active_list()
+
+    def move_ocr_up() -> None:
+        selection = ocr_active_listbox.curselection()
+        if selection and selection[0] > 0:
+            idx = selection[0]
+            active_ocr_operations[idx - 1], active_ocr_operations[idx] = (
+                active_ocr_operations[idx],
+                active_ocr_operations[idx - 1],
+            )
+            refresh_ocr_active_list()
+            ocr_active_listbox.selection_set(idx - 1)
+
+    def move_ocr_down() -> None:
+        selection = ocr_active_listbox.curselection()
+        if selection and selection[0] < len(active_ocr_operations) - 1:
+            idx = selection[0]
+            active_ocr_operations[idx + 1], active_ocr_operations[idx] = (
+                active_ocr_operations[idx],
+                active_ocr_operations[idx + 1],
+            )
+            refresh_ocr_active_list()
+            ocr_active_listbox.selection_set(idx + 1)
+
+    def on_ocr_available_double_click(event) -> None:
+        selection = ocr_available_listbox.curselection()
+        if selection:
+            op_id = ocr_operations[selection[0]][0]
+            add_active_ocr(op_id)
+
+    def on_ocr_active_delete(event) -> None:
+        selection = ocr_active_listbox.curselection()
+        if selection:
+            remove_active_ocr(selection[0])
 
     def run_unified_config() -> None:
         """
@@ -658,6 +687,9 @@ def start_gui() -> int:
                 # Switch to composite tab if it's a composite config
                 notebook.select(1)  # Select composite tab (index 1)
                 status_var.set(f"Loaded composite config with {len(composite_configs)} items")
+            
+            # Refresh edit view to show the loaded config
+            refresh_edit_view()
     
     def load_config_folder_by_path(folder_path: Path) -> None:
         """Load config files from a specified folder path."""
@@ -708,6 +740,9 @@ def start_gui() -> int:
             update_comment_text_from_var(comment)
             config_comment_var.set(comment)
             app_logger.info(f"Config selected from list: {config_path}")
+            
+            # Refresh edit view to show the selected config
+            refresh_edit_view()
     
     def on_config_double_click(event) -> None:
         """Handle double-click on config list to add to composite."""
@@ -793,8 +828,570 @@ def start_gui() -> int:
             composite_listbox.selection_set(idx+1)
             app_logger.info(f"Moved down: {composite_configs[idx+1]}")
 
+    # ===== Edit Tab Functions =====
+    def refresh_edit_view() -> None:
+        """Refresh the edit view by loading the current config."""
+        nonlocal edit_data, edit_config_type
+        
+        config_path_str = config_var.get().strip()
+        if not config_path_str:
+            edit_tree.delete(*edit_tree.get_children())
+            edit_tree.insert("", "end", values=("", i18n.t("no_config_loaded"), ""))
+            return
+        
+        config_path = Path(config_path_str)
+        if not config_path.exists():
+            edit_tree.delete(*edit_tree.get_children())
+            edit_tree.insert("", "end", values=("", i18n.t("config_not_found"), ""))
+            return
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            edit_data = data
+            refresh_edit_tree()
+            
+        except Exception as e:
+            app_logger.error(f"Failed to load config for editing: {e}")
+            edit_tree.delete(*edit_tree.get_children())
+            edit_tree.insert("", "end", values=("", "Error", str(e)))
+    
+    def refresh_edit_tree() -> None:
+        """Refresh the tree view using the current edit_data in memory."""
+        nonlocal edit_config_type
+        
+        if edit_data is None:
+            edit_tree.delete(*edit_tree.get_children())
+            edit_tree.insert("", "end", values=("", i18n.t("no_config_loaded"), ""))
+            return
+        
+        edit_tree.delete(*edit_tree.get_children())
+        
+        # Determine config type
+        if isinstance(edit_data, dict) and edit_data.get("type") == "composite":
+            edit_config_type = "composite"
+            # Display composite configs
+            configs = edit_data.get("configs", [])
+            for idx, item in enumerate(configs):
+                config_name = Path(item.get("config", "")).name
+                edit_tree.insert("", "end", values=(str(idx), "Config", config_name), tags=("composite",))
+            app_logger.info(f"Displayed composite config with {len(configs)} items")
+            
+        elif isinstance(edit_data, dict) and "timeline" in edit_data:
+            edit_config_type = "timeline"
+            # Display timeline events
+            timeline = edit_data.get("timeline", [])
+            for idx, event in enumerate(timeline):
+                time_str = f"{event.get('time', 0):.3f}s"
+                event_type = event.get("type", "unknown")
+                details = format_event_details(event)
+                edit_tree.insert("", "end", values=(time_str, event_type, details), tags=("timeline",))
+            app_logger.info(f"Displayed timeline config with {len(timeline)} events")
+            
+        else:
+            edit_config_type = "legacy"
+            # Display legacy steps
+            if isinstance(edit_data, list):
+                for idx, step in enumerate(edit_data):
+                    action = step.get("action", "unknown")
+                    details = format_step_details(step)
+                    edit_tree.insert("", "end", values=(str(idx), action, details), tags=("legacy",))
+                app_logger.info(f"Displayed legacy config with {len(edit_data)} steps")
+            else:
+                edit_tree.insert("", "end", values=("", "Error", "Unknown config format"))
+        
+        status_var.set(f"Loaded {edit_config_type} config for editing")
+    
+    def format_event_details(event: dict) -> str:
+        """Format timeline event details for display."""
+        event_type = event.get("type", "")
+        
+        if event_type == "click":
+            return f"({event.get('x')}, {event.get('y')}) [{event.get('button', 'left')}]"
+        elif event_type == "drag":
+            return f"({event.get('start_x')}, {event.get('start_y')}) -> ({event.get('end_x')}, {event.get('end_y')})"
+        elif event_type == "hold":
+            return f"({event.get('x')}, {event.get('y')}) for {event.get('duration', 0):.2f}s"
+        elif event_type == "key_press":
+            return f"Press '{event.get('key', '')}'"
+        elif event_type == "key_release":
+            return f"Release '{event.get('key', '')}'"
+        elif event_type == "goods_ocr":
+            return f"Template: {event.get('template', '')}"
+        elif event_type == "home_assist_ocr":
+            return "Home assist template recognition"
+        elif event_type == "qingbao_ocr":
+            return "Qingbao template recognition"
+        else:
+            return json.dumps({k: v for k, v in event.items() if k != "type" and k != "time"})
+    
+    def format_step_details(step: dict) -> str:
+        """Format legacy step details for display."""
+        action = step.get("action", "")
+        
+        if action == "click":
+            return f"({step.get('x')}, {step.get('y')})"
+        elif action == "drag":
+            return f"({step.get('start_x')}, {step.get('start_y')}) -> ({step.get('end_x')}, {step.get('end_y')})"
+        elif action == "key":
+            return f"Key: {step.get('key', '')}"
+        else:
+            return json.dumps({k: v for k, v in step.items() if k != "action"})
+    
+    def save_edit_changes() -> None:
+        """Save the edited config back to file."""
+        nonlocal edit_data
+        
+        if edit_data is None:
+            messagebox.showinfo("Info", i18n.t("load_config_first"))
+            return
+        
+        config_path_str = config_var.get().strip()
+        if not config_path_str:
+            messagebox.showerror("Error", "No config file specified")
+            return
+        
+        config_path = Path(config_path_str)
+        
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(edit_data, f, indent=2, ensure_ascii=False)
+            status_var.set(f"Saved changes to {config_path.name}")
+            app_logger.info(f"Saved edited config to {config_path}")
+            messagebox.showinfo("Success", f"Changes saved to {config_path.name}")
+        except Exception as e:
+            app_logger.error(f"Failed to save edited config: {e}")
+            messagebox.showerror("Error", f"Failed to save: {e}")
+    
+    def delete_edit_step() -> None:
+        """Delete the selected step from the edit view."""
+        nonlocal edit_data
+        
+        selection = edit_tree.selection()
+        if not selection:
+            return
+        
+        item = selection[0]
+        item_index = edit_tree.index(item)
+        
+        if edit_config_type == "composite":
+            # Remove from composite configs
+            if 0 <= item_index < len(edit_data.get("configs", [])):
+                removed = edit_data["configs"].pop(item_index)
+                edit_tree.delete(item)
+                app_logger.info(f"Deleted composite item: {removed}")
+                status_var.set("Deleted composite item")
+                
+        elif edit_config_type == "timeline":
+            # Remove from timeline
+            timeline = edit_data.get("timeline", [])
+            if 0 <= item_index < len(timeline):
+                removed = timeline.pop(item_index)
+                edit_tree.delete(item)
+                app_logger.info(f"Deleted timeline event: {removed}")
+                status_var.set("Deleted timeline event")
+                
+        elif edit_config_type == "legacy":
+            # Remove from legacy steps
+            if isinstance(edit_data, list) and 0 <= item_index < len(edit_data):
+                removed = edit_data.pop(item_index)
+                edit_tree.delete(item)
+                app_logger.info(f"Deleted legacy step: {removed}")
+                status_var.set("Deleted legacy step")
+    
+    def adjust_timeline_after_deletion(deleted_index: int) -> None:
+        """Adjust timeline after deleting an event."""
+        if edit_config_type != "timeline":
+            return
+        
+        timeline = edit_data.get("timeline", [])
+        if deleted_index >= len(timeline):
+            return
+        
+        # Get the time of the deleted event (we need to subtract this from subsequent events)
+        # Actually, we don't adjust times for deletion, only for insertion
+        # Just refresh the view
+        pass
+    
+    def adjust_timeline_after_insertion(insert_index: int, inserted_duration: float) -> None:
+        """Adjust timeline after inserting new events."""
+        if edit_config_type != "timeline":
+            return
+        
+        timeline = edit_data.get("timeline", [])
+        
+        # Shift all subsequent events by the inserted duration
+        for i in range(insert_index, len(timeline)):
+            if "time" in timeline[i]:
+                timeline[i]["time"] = round(timeline[i]["time"] + inserted_duration, 3)
+    
+    def start_re_recording(mode: str) -> None:
+        """Start re-recording for the selected step."""
+        nonlocal re_recording_step_index, re_recording_mode
+        
+        selection = edit_tree.selection()
+        if not selection:
+            return
+        
+        if edit_config_type not in ("timeline", "legacy"):
+            messagebox.showinfo("Info", "Re-recording only works for recorded configs")
+            return
+        
+        item = selection[0]
+        item_index = edit_tree.index(item)
+        re_recording_step_index = item_index
+        re_recording_mode = mode
+        
+        set_controls(True, running)
+        
+        if mode == "re-record":
+            status_var.set(f"Re-recording step {item_index}... Starting in 1 second...")
+        elif mode == "insert-above":
+            status_var.set(f"Recording to insert above step {item_index}... Starting in 1 second...")
+        elif mode == "insert-below":
+            status_var.set(f"Recording to insert below step {item_index}... Starting in 1 second...")
+        
+        def begin() -> None:
+            minimize_gui()
+            recorder.start()
+            app_logger.info(f"Started {mode} for step {item_index}")
+            if mode == "re-record":
+                status_var.set(f"Re-recording step {item_index}... Press Ctrl+X to stop.")
+            elif mode == "insert-above":
+                status_var.set(f"Recording to insert above step {item_index}... Press Ctrl+X to stop.")
+            elif mode == "insert-below":
+                status_var.set(f"Recording to insert below step {item_index}... Press Ctrl+X to stop.")
+        
+        root.after(1000, begin)
+    
+    def finish_re_recording(recorded_data: dict) -> None:
+        """Finish re-recording and update the config."""
+        nonlocal edit_data, re_recording_step_index, re_recording_mode
+        
+        if re_recording_step_index is None or re_recording_mode is None:
+            return
+        
+        recorded_events = recorded_data.get("timeline", [])
+        app_logger.info(f"finish_re_recording: Got {len(recorded_events)} events before trimming")
+        
+        if not recorded_events:
+            messagebox.showinfo("Info", "No events recorded")
+            re_recording_step_index = None
+            re_recording_mode = None
+            return
+        
+        recorded_events = recorded_data.get("timeline", [])
+        app_logger.info(f"finish_re_recording: Got {len(recorded_events)} events after trimming")
+        
+        if not recorded_events:
+            messagebox.showinfo("Info", "No events recorded after trimming")
+            re_recording_step_index = None
+            re_recording_mode = None
+            return
+        
+        app_logger.info(f"finish_re_recording: Processing mode={re_recording_mode}, index={re_recording_step_index}, config_type={edit_config_type}")
+        
+        if edit_config_type == "timeline":
+            timeline = edit_data.get("timeline", [])
+            
+            if re_recording_mode == "re-record":
+                # Delete old operation and insert new ones at the same position
+                if 0 <= re_recording_step_index < len(timeline):
+                    old_time = timeline[re_recording_step_index].get("time", 0)
+                    # Calculate old duration (time until next event, or 0 if last)
+                    if re_recording_step_index + 1 < len(timeline):
+                        old_next_time = timeline[re_recording_step_index + 1].get("time", 0)
+                        old_duration = old_next_time - old_time
+                    else:
+                        old_duration = 0
+                    
+                    # Remove the old event
+                    timeline.pop(re_recording_step_index)
+                    
+                    # Calculate duration of new recording
+                    new_duration = recorded_events[-1].get("time", 0) if recorded_events else 0
+                    
+                    # Insert new events, aligning first event with old time
+                    for i, event in enumerate(recorded_events):
+                        new_event = event.copy()
+                        new_event["time"] = round(old_time + event.get("time", 0), 3)
+                        timeline.insert(re_recording_step_index + i, new_event)
+                    
+                    # Adjust subsequent events (shift by the difference in duration)
+                    time_shift = new_duration - old_duration
+                    for i in range(re_recording_step_index + len(recorded_events), len(timeline)):
+                        if "time" in timeline[i]:
+                            timeline[i]["time"] = round(timeline[i]["time"] + time_shift, 3)
+                    
+                    app_logger.info(f"Re-recorded step {re_recording_step_index} with {len(recorded_events)} events")
+                    
+            elif re_recording_mode == "insert-above":
+                # Insert new events above the selected step
+                if 0 <= re_recording_step_index < len(timeline):
+                    base_time = timeline[re_recording_step_index].get("time", 0)
+                    # Calculate duration of new recording
+                    new_duration = recorded_events[-1].get("time", 0) if recorded_events else 0
+                    
+                    # Insert new events at the selected position
+                    for i, event in enumerate(recorded_events):
+                        new_event = event.copy()
+                        new_event["time"] = round(base_time + event.get("time", 0), 3)
+                        timeline.insert(re_recording_step_index + i, new_event)
+                    
+                    # Adjust all subsequent events (including the originally selected one)
+                    for i in range(re_recording_step_index + len(recorded_events), len(timeline)):
+                        if "time" in timeline[i]:
+                            timeline[i]["time"] = round(timeline[i]["time"] + new_duration, 3)
+                    
+                    app_logger.info(f"Inserted {len(recorded_events)} events above step {re_recording_step_index}")
+                    
+            elif re_recording_mode == "insert-below":
+                # Insert new events below the selected step
+                if 0 <= re_recording_step_index < len(timeline):
+                    # For insert-below, we want new events to start after the selected event
+                    # Get the time of the next event (or use selected event time if it's the last)
+                    if re_recording_step_index + 1 < len(timeline):
+                        base_time = timeline[re_recording_step_index + 1].get("time", 0)
+                    else:
+                        # If inserting after the last event, start from that event's time
+                        base_time = timeline[re_recording_step_index].get("time", 0)
+                    
+                    # Calculate duration of new recording
+                    new_duration = recorded_events[-1].get("time", 0) if recorded_events else 0
+                    
+                    # Insert new events after the selected step
+                    insert_position = re_recording_step_index + 1
+                    for i, event in enumerate(recorded_events):
+                        new_event = event.copy()
+                        new_event["time"] = round(base_time + event.get("time", 0), 3)
+                        timeline.insert(insert_position + i, new_event)
+                    
+                    # Adjust subsequent events
+                    for i in range(insert_position + len(recorded_events), len(timeline)):
+                        if "time" in timeline[i]:
+                            timeline[i]["time"] = round(timeline[i]["time"] + new_duration, 3)
+                    
+                    app_logger.info(f"Inserted {len(recorded_events)} events below step {re_recording_step_index}")
+        
+        elif edit_config_type == "legacy":
+            # For legacy format, convert timeline events to legacy steps
+            legacy_steps = [convert_timeline_to_legacy_step(event) for event in recorded_events]
+            
+            if isinstance(edit_data, list):
+                if re_recording_mode == "re-record":
+                    # Replace the old step with new ones
+                    if 0 <= re_recording_step_index < len(edit_data):
+                        edit_data.pop(re_recording_step_index)
+                        for i, step in enumerate(legacy_steps):
+                            edit_data.insert(re_recording_step_index + i, step)
+                        app_logger.info(f"Re-recorded step {re_recording_step_index} with {len(legacy_steps)} steps")
+                        
+                elif re_recording_mode == "insert-above":
+                    # Insert new steps above
+                    for i, step in enumerate(legacy_steps):
+                        edit_data.insert(re_recording_step_index + i, step)
+                    app_logger.info(f"Inserted {len(legacy_steps)} steps above step {re_recording_step_index}")
+                        
+                elif re_recording_mode == "insert-below":
+                    # Insert new steps below
+                    insert_position = re_recording_step_index + 1
+                    for i, step in enumerate(legacy_steps):
+                        edit_data.insert(insert_position + i, step)
+                    app_logger.info(f"Inserted {len(legacy_steps)} steps below step {re_recording_step_index}")
+        
+        # Reset re-recording state
+        re_recording_step_index = None
+        re_recording_mode = None
+        
+        # Refresh the tree view with the updated data in memory
+        refresh_edit_tree()
+        status_var.set("Re-recording complete")
+    
+    def convert_timeline_to_legacy_step(event: dict) -> dict:
+        """Convert a timeline event to a legacy step format."""
+        event_type = event.get("type", "")
+        
+        if event_type == "click":
+            return {
+                "action": "click",
+                "x": event.get("x"),
+                "y": event.get("y"),
+                "button": event.get("button", "left")
+            }
+        elif event_type == "drag":
+            return {
+                "action": "drag",
+                "start_x": event.get("start_x"),
+                "start_y": event.get("start_y"),
+                "end_x": event.get("end_x"),
+                "end_y": event.get("end_y"),
+                "duration": event.get("duration", 0)
+            }
+        elif event_type == "key_press" or event_type == "key_release":
+            return {
+                "action": "key",
+                "key": event.get("key", "")
+            }
+        else:
+            # Return the event as-is
+            return {k: v for k, v in event.items() if k != "time"}
+    
+    def on_edit_right_click(event) -> None:
+        """Show context menu for edit tree."""
+        # Select the item under the cursor
+        item = edit_tree.identify_row(event.y)
+        if item:
+            edit_tree.selection_set(item)
+            
+            # Create context menu based on config type
+            edit_menu = tk.Menu(root, tearoff=0)
+            
+            if edit_config_type == "composite":
+                edit_menu.add_command(label=i18n.t("insert_above"), command=lambda: add_composite_step_above())
+                edit_menu.add_command(label=i18n.t("insert_below"), command=lambda: add_composite_step_below())
+                edit_menu.add_separator()
+                edit_menu.add_command(label=i18n.t("delete_step"), command=lambda: delete_edit_step())
+            else:
+                # For timeline and legacy (recorded configs)
+                edit_menu.add_command(label=i18n.t("re_record"), command=lambda: start_re_recording("re-record"))
+                edit_menu.add_command(label=i18n.t("insert_above"), command=lambda: start_re_recording("insert-above"))
+                edit_menu.add_command(label=i18n.t("insert_below"), command=lambda: start_re_recording("insert-below"))
+                edit_menu.add_separator()
+                edit_menu.add_command(label=i18n.t("delete_step"), command=lambda: delete_edit_step())
+            
+            edit_menu.post(event.x_root, event.y_root)
+    
+    def on_edit_double_click(event) -> None:
+        """Handle double-click to edit time field inline."""
+        # Only allow editing time for timeline configs
+        if edit_config_type != "timeline":
+            return
+        
+        # Identify what was clicked
+        item = edit_tree.identify_row(event.y)
+        column = edit_tree.identify_column(event.x)
+        
+        # Only allow editing the time column (column #1)
+        if not item or column != "#1":  # #1 is the "time" column
+            return
+        
+        item_index = edit_tree.index(item)
+        timeline = edit_data.get("timeline", [])
+        
+        if item_index >= len(timeline):
+            return
+        
+        current_event = timeline[item_index]
+        current_time = current_event.get("time", 0)
+        
+        # Get bounds for valid time
+        prev_time = timeline[item_index - 1].get("time", 0) if item_index > 0 else 0
+        next_time = timeline[item_index + 1].get("time", float('inf')) if item_index + 1 < len(timeline) else float('inf')
+        
+        # Get the bounding box of the cell
+        bbox = edit_tree.bbox(item, column)
+        if not bbox:
+            return
+        
+        x, y, width, height = bbox
+        
+        # Create an Entry widget over the cell
+        edit_entry = tk.Entry(edit_tree, width=10)
+        edit_entry.insert(0, f"{current_time:.3f}")
+        edit_entry.select_range(0, tk.END)
+        edit_entry.focus()
+        
+        # Position the entry over the cell
+        edit_entry.place(x=x, y=y, width=width, height=height)
+        
+        def save_edit():
+            try:
+                new_time_str = edit_entry.get()
+                new_time = float(new_time_str)
+                
+                # Validate the time is within bounds
+                if new_time < prev_time or new_time > next_time:
+                    # Invalid time, revert to original silently
+                    status_var.set(f"Invalid time range, reverted to {current_time:.3f}s")
+                    app_logger.info(f"Time {new_time:.3f}s out of valid range [{prev_time:.3f}s, {next_time:.3f}s], reverted")
+                    edit_entry.destroy()
+                    return
+                
+                # Update the time in edit_data
+                timeline[item_index]["time"] = round(new_time, 3)
+                
+                # Refresh the tree view
+                refresh_edit_tree()
+                
+                status_var.set(f"Updated time for step {item_index}")
+                app_logger.info(f"Updated time for step {item_index} from {current_time:.3f}s to {new_time:.3f}s")
+                
+            except ValueError:
+                # Invalid input, revert to original silently
+                status_var.set(f"Invalid input, reverted to {current_time:.3f}s")
+                app_logger.info(f"Invalid time input: '{edit_entry.get()}', reverted")
+            
+            edit_entry.destroy()
+        
+        def cancel_edit(event=None):
+            edit_entry.destroy()
+        
+        # Bind events
+        edit_entry.bind("<Return>", lambda e: save_edit())
+        edit_entry.bind("<Escape>", cancel_edit)
+        edit_entry.bind("<FocusOut>", lambda e: save_edit())
+    
+    def add_composite_step_above() -> None:
+        """Add a config to the composite list above the selected item."""
+        if edit_config_type != "composite":
+            return
+        
+        selection = edit_tree.selection()
+        if not selection:
+            return
+        
+        item = selection[0]
+        item_index = edit_tree.index(item)
+        
+        # Open file dialog to select a config
+        path = filedialog.askopenfilename(
+            title="Select config to add",
+            filetypes=[("JSON", "*.json"), ("All files", "*.*")],
+        )
+        if path:
+            edit_data["configs"].insert(item_index, {"config": str(path)})
+            refresh_edit_tree()
+            app_logger.info(f"Added config to composite above index {item_index}: {path}")
+            status_var.set(f"Added config above step {item_index}")
+    
+    def add_composite_step_below() -> None:
+        """Add a config to the composite list below the selected item."""
+        if edit_config_type != "composite":
+            return
+        
+        selection = edit_tree.selection()
+        if not selection:
+            return
+        
+        item = selection[0]
+        item_index = edit_tree.index(item)
+        
+        # Open file dialog to select a config
+        path = filedialog.askopenfilename(
+            title="Select config to add",
+            filetypes=[("JSON", "*.json"), ("All files", "*.*")],
+        )
+        if path:
+            edit_data["configs"].insert(item_index + 1, {"config": str(path)})
+            refresh_edit_tree()
+            app_logger.info(f"Added config to composite below index {item_index}: {path}")
+            status_var.set(f"Added config below step {item_index}")
+
     def show_help() -> None:
-        messagebox.showinfo(i18n.t("help_title"), i18n.t("help_content"))
+        repo_url = "https://github.com/mikiisayakaa/EndfieldHelper.git"
+        if not webbrowser.open(repo_url):
+            messagebox.showinfo(i18n.t("help_title"), repo_url)
 
     def set_controls(recording: bool, is_running: bool) -> None:
         start_button.config(
@@ -837,14 +1434,25 @@ def start_gui() -> int:
         root.after(1000, begin)
 
     def stop_recording() -> None:
+        nonlocal re_recording_step_index, re_recording_mode
+        
         data = recorder.stop()
+        
+        # Check if this is a re-recording session
+        if re_recording_step_index is not None and re_recording_mode is not None:
+            # This is a re-recording, handle it differently
+            set_controls(False, running)
+            show_gui()
+            finish_re_recording(data)
+            return
+        
+        # Normal recording session
         config_path = Path(config_var.get().strip())
         if not config_path.name:
             messagebox.showerror(i18n.t("error"), i18n.t("error_choose_config"))
             set_controls(False, running)
             status_var.set(i18n.t("idle"))
             return
-        data = trim_stop_hotkey(data)
         
         # Add comment to data (from text box, not var)
         if isinstance(data, dict):
@@ -876,33 +1484,54 @@ def start_gui() -> int:
 
     padding = {"padx": 8, "pady": 6}
 
-    # ===== LEFT COLUMN: Template Selection =====
-    template_dir = get_resource_path("templates")
-    group_templates = []
-    if list(template_dir.glob("goods_gudi_*.png")):
-        group_templates.append("gudi")
-    if list(template_dir.glob("goods_wuling_*.png")):
-        group_templates.append("wuling")
-    available_templates = group_templates
-    if not available_templates:
-        available_templates = sorted([f.name for f in template_dir.glob("goods_template_*.png")])
-    if available_templates:
-        goods_template_var.set(available_templates[0])
-    
-    template_frame = tk.LabelFrame(root, text=i18n.t("goods_template"), padx=8, pady=4)
-    ui_elements['template_frame'] = (template_frame, 'goods_template', False)
-    template_frame.grid(row=0, column=0, rowspan=6, sticky="nsew", **padding)
-    for template_name in available_templates:
-        if template_name.startswith("goods_template_"):
-            label = template_name.replace("goods_template_", "").replace(".png", "")
-        else:
-            label = template_name
-        tk.Radiobutton(
-            template_frame,
-            text=label,
-            variable=goods_template_var,
-            value=template_name,
-        ).pack(anchor=tk.W)
+    # ===== LEFT COLUMN: OCR Operations =====
+    ocr_frame = tk.LabelFrame(root, text="OCR Operations", padx=4, pady=4)
+    ocr_frame.grid(row=0, column=0, rowspan=6, sticky="nsew", **padding)
+
+    ocr_available_frame = tk.LabelFrame(ocr_frame, text="Available", padx=4, pady=4)
+    ocr_available_frame.pack(fill=tk.BOTH, expand=True)
+    ocr_available_listbox = tk.Listbox(ocr_available_frame, height=6)
+    ocr_available_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    ocr_available_scroll = tk.Scrollbar(ocr_available_frame, orient=tk.VERTICAL)
+    ocr_available_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+    ocr_available_listbox.config(yscrollcommand=ocr_available_scroll.set)
+    ocr_available_scroll.config(command=ocr_available_listbox.yview)
+
+    for _, label in ocr_operations:
+        ocr_available_listbox.insert(tk.END, label)
+
+    ocr_active_frame = tk.LabelFrame(ocr_frame, text="Active (Ctrl+Shift+1-0)", padx=4, pady=4)
+    ocr_active_frame.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
+
+    ocr_active_buttons = tk.Frame(ocr_active_frame)
+    ocr_active_buttons.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 2))
+    ocr_up_button = ttk.Button(
+        ocr_active_buttons,
+        text=i18n.t("up"),
+        command=move_ocr_up,
+        width=2,
+        style="Modern.TButton",
+    )
+    ocr_up_button.pack(pady=(0, 2))
+    ocr_down_button = ttk.Button(
+        ocr_active_buttons,
+        text=i18n.t("down"),
+        command=move_ocr_down,
+        width=2,
+        style="Modern.TButton",
+    )
+    ocr_down_button.pack()
+
+    ocr_active_listbox = tk.Listbox(ocr_active_frame, height=6)
+    ocr_active_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    ocr_active_scroll = tk.Scrollbar(ocr_active_frame, orient=tk.VERTICAL)
+    ocr_active_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+    ocr_active_listbox.config(yscrollcommand=ocr_active_scroll.set)
+    ocr_active_scroll.config(command=ocr_active_listbox.yview)
+
+    refresh_ocr_active_list()
 
     # ===== MIDDLE COLUMN: Controls and Log =====
     config_frame = tk.Frame(root)
@@ -1077,6 +1706,61 @@ def start_gui() -> int:
     composite_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     composite_list_scrollbar.config(command=composite_listbox.yview)
 
+    # ===== TAB 3: Edit Mode =====
+    edit_tab = tk.Frame(notebook)
+    notebook.add(edit_tab, text=i18n.t("edit"))
+
+    # Button frame for edit operations
+    edit_button_frame = tk.Frame(edit_tab)
+    edit_button_frame.pack(fill=tk.X, padx=8, pady=6)
+    
+    refresh_edit_button = ttk.Button(
+        edit_button_frame,
+        text=i18n.t("refresh"),
+        command=lambda: refresh_edit_view(),
+        width=10,
+        style="Modern.TButton",
+    )
+    refresh_edit_button.pack(side=tk.LEFT, padx=(0, 4))
+    
+    save_edit_button = ttk.Button(
+        edit_button_frame,
+        text=i18n.t("save"),
+        command=lambda: save_edit_changes(),
+        width=10,
+        style="Modern.TButton",
+    )
+    save_edit_button.pack(side=tk.LEFT, padx=(0, 4))
+
+    # Steps list frame
+    edit_list_frame = tk.LabelFrame(edit_tab, text=i18n.t("edit_steps"), padx=4, pady=4)
+    edit_list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 6))
+    
+    edit_list_scrollbar = tk.Scrollbar(edit_list_frame, orient=tk.VERTICAL)
+    edit_list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    # Create Treeview for better step display
+    edit_tree = ttk.Treeview(
+        edit_list_frame,
+        columns=("time", "type", "details"),
+        show="headings",
+        height=10,
+        yscrollcommand=edit_list_scrollbar.set,
+    )
+    edit_tree.heading("time", text="Time")
+    edit_tree.heading("type", text="Type")
+    edit_tree.heading("details", text="Details")
+    edit_tree.column("time", width=80, anchor=tk.W)
+    edit_tree.column("type", width=100, anchor=tk.W)
+    edit_tree.column("details", width=300, anchor=tk.W)
+    edit_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    edit_list_scrollbar.config(command=edit_tree.yview)
+    
+    # Bind right-click context menu for edit tree
+    edit_tree.bind("<Button-3>", on_edit_right_click)
+    # Bind double-click to edit time
+    edit_tree.bind("<Double-Button-1>", on_edit_double_click)
+
     log_frame = tk.Frame(root)
     log_frame.grid(row=4, column=1, sticky="nsew", **padding)
     log_scrollbar = tk.Scrollbar(log_frame, orient=tk.VERTICAL)
@@ -1146,6 +1830,11 @@ def start_gui() -> int:
     composite_listbox.bind("<Double-Button-1>", on_composite_double_click)
     composite_listbox.bind("<Delete>", on_composite_delete_key)
 
+    # Bind events to OCR listboxes
+    ocr_available_listbox.bind("<Double-Button-1>", on_ocr_available_double_click)
+    ocr_active_listbox.bind("<Double-Button-1>", on_ocr_active_delete)
+    ocr_active_listbox.bind("<Delete>", on_ocr_active_delete)
+
     def on_hotkey_stop() -> None:
         if running:
             stop_event.set()
@@ -1154,26 +1843,25 @@ def start_gui() -> int:
         if recorder.recording:
             stop_recording()
 
-    def on_goods_capture() -> None:
-        template_value = goods_template_var.get()
+    def run_goods_ocr(template_value: str) -> None:
         if template_value in {"gudi", "wuling"}:
             template_path = template_value
         else:
             template_path = get_resource_path("templates") / template_value
-        
+
         if recorder.recording:
             # Add goods_ocr event to timeline with template info
-            recorder._add_event("goods_ocr", template=goods_template_var.get())
+            recorder._add_event("goods_ocr", template=template_value)
             status_var.set("Goods OCR step recorded")
-            app_logger.info(f"Recorded goods_ocr step with template: {goods_template_var.get()}")
-            
+            app_logger.info(f"Recorded goods_ocr step with template: {template_value}")
+
             # Now execute the goods_ocr operation immediately
             # Set flag to skip recording all internal operations
             def execute_goods_capture() -> None:
                 try:
                     # Disable recording of all internal operations
                     recorder._skip_recording = True
-                    
+
                     time.sleep(0.3)
                     result = process_goods_image(save_screenshot=False, template_path=template_path)
                     app_logger.info(
@@ -1185,7 +1873,7 @@ def start_gui() -> int:
                     )
                     for item_line in format_goods_ocr_items(result):
                         app_logger.info("goods_ocr item: %s", item_line)
-                    
+
                     # Analyze goods data and auto-click the cheapest item
                     analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
                     if analysis:
@@ -1197,7 +1885,7 @@ def start_gui() -> int:
                 finally:
                     # Re-enable recording
                     recorder._skip_recording = False
-            
+
             threading.Thread(target=execute_goods_capture, daemon=True).start()
             return
 
@@ -1219,17 +1907,21 @@ def start_gui() -> int:
                 )
                 for item_line in format_goods_ocr_items(result):
                     app_logger.info("goods_ocr item: %s", item_line)
-                
+
                 # Analyze goods data and auto-click the cheapest item
                 analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
                 if analysis:
                     app_logger.info(f"Found cheapest: Row {analysis['row']}, Col {analysis['col']} ({analysis['percent']})")
-                    ui_call(lambda: status_var.set(f"Found cheapest: Row {analysis['row']}, Col {analysis['col']} ({analysis['percent']}) - Clicking..."))
+                    ui_call(lambda: status_var.set(
+                        f"Found cheapest: Row {analysis['row']}, Col {analysis['col']} ({analysis['percent']}) - Clicking..."
+                    ))
                     time.sleep(0.3)
                     # Auto-click the cheapest item
                     pyautogui.click(analysis["center_x"], analysis["center_y"])
                     app_logger.info(f"Clicked cheapest item at ({analysis['center_x']}, {analysis['center_y']})")
-                    ui_call(lambda: status_var.set(f"Clicked cheapest item at ({analysis['center_x']}, {analysis['center_y']})"))
+                    ui_call(lambda: status_var.set(
+                        f"Clicked cheapest item at ({analysis['center_x']}, {analysis['center_y']})"
+                    ))
                 else:
                     app_logger.warning("No valid goods found (no green arrows)")
                     ui_call(lambda: status_var.set("No valid goods found (no green arrows)"))
@@ -1377,6 +2069,22 @@ def start_gui() -> int:
         app_logger.info(f"Hotkey qingbao loop: {config_path}")
         run_unified_config()
 
+    def run_ocr_operation(operation_id: str) -> None:
+        if operation_id == "goods_ocr_gudi":
+            run_goods_ocr("gudi")
+        elif operation_id == "goods_ocr_wuling":
+            run_goods_ocr("wuling")
+        elif operation_id == "home_assist_ocr":
+            on_home_assist_ocr()
+        elif operation_id == "qingbao_ocr":
+            on_qingbao_hotkey()
+
+    def run_active_ocr_slot(slot_index: int) -> None:
+        if slot_index < 0 or slot_index >= len(active_ocr_operations):
+            status_var.set("OCR slot not assigned")
+            return
+        run_ocr_operation(active_ocr_operations[slot_index])
+
     def start_hotkey_listener() -> None:
         nonlocal hotkey_listener, goods_listener
         if hotkey_listener is None:
@@ -1385,12 +2093,20 @@ def start_gui() -> int:
             )
             hotkey_listener.start()
         if goods_listener is None:
+            hotkeys = {
+                "<ctrl>+<shift>+1": lambda: ui_call(run_active_ocr_slot, 0),
+                "<ctrl>+<shift>+2": lambda: ui_call(run_active_ocr_slot, 1),
+                "<ctrl>+<shift>+3": lambda: ui_call(run_active_ocr_slot, 2),
+                "<ctrl>+<shift>+4": lambda: ui_call(run_active_ocr_slot, 3),
+                "<ctrl>+<shift>+5": lambda: ui_call(run_active_ocr_slot, 4),
+                "<ctrl>+<shift>+6": lambda: ui_call(run_active_ocr_slot, 5),
+                "<ctrl>+<shift>+7": lambda: ui_call(run_active_ocr_slot, 6),
+                "<ctrl>+<shift>+8": lambda: ui_call(run_active_ocr_slot, 7),
+                "<ctrl>+<shift>+9": lambda: ui_call(run_active_ocr_slot, 8),
+                "<ctrl>+<shift>+0": lambda: ui_call(run_active_ocr_slot, 9),
+            }
             goods_listener = keyboard.GlobalHotKeys(
-                {
-                    "<ctrl>+<shift>+s": lambda: ui_call(on_goods_capture),
-                    "<ctrl>+<shift>+p": lambda: ui_call(on_home_assist_ocr),
-                    "<ctrl>+<shift>+a": lambda: ui_call(on_qingbao_hotkey)
-                }
+                hotkeys
             )
             goods_listener.start()
         # Start the arrow key hook for mouse movement
