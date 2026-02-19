@@ -506,7 +506,11 @@ def start_gui() -> int:
             return
         
         # Define recursive config executor (shared by both modes)
-        def execute_config_recursive(config_path: Path | str, depth: int = 0) -> None:
+        def execute_config_recursive(
+            config_path: Path | str,
+            depth: int = 0,
+            wait_for_timeline: bool = False,
+        ) -> None:
             """Recursively execute a config that may contain nested composites."""
             indent = "  " * depth
             data = load_steps(config_path)
@@ -555,6 +559,7 @@ def start_gui() -> int:
                     data,
                     stop_check=stop_event.is_set,
                     event_callback=log_event,
+                    wait_for_events=wait_for_timeline,
                 )
             elif isinstance(data, dict) and data.get("type") == "composite":
                 # Nested composite format
@@ -570,7 +575,11 @@ def start_gui() -> int:
                         continue
                     
                     ui_call(append_log_line, f"{indent}  [{sub_idx}/{len(composite_list)}] {Path(sub_config_path).name}")
-                    execute_config_recursive(Path(sub_config_path), depth + 1)
+                    execute_config_recursive(
+                        Path(sub_config_path),
+                        depth + 1,
+                        wait_for_timeline=True,
+                    )
             else:
                 # Legacy format
                 ui_call(append_log_line, f"{indent}Running legacy format with {len(data)} steps")
@@ -1255,7 +1264,7 @@ def start_gui() -> int:
                     screenshot = pyautogui.screenshot()
                     
                     # Recognize template: templates/home_use_assistance
-                    from goods_processor import recognize_template
+                    from ocr import recognize_template
                     result = recognize_template(screenshot, "home_use_assistance.png")
                     
                     if result and result['confidence'] > 90:
@@ -1290,7 +1299,7 @@ def start_gui() -> int:
                 screenshot = pyautogui.screenshot()
                 
                 # Recognize template: templates/home_use_assistance
-                from goods_processor import recognize_template
+                from ocr import recognize_template
                 result = recognize_template(screenshot, "home_use_assistance.png")
                 
                 if result and result['confidence'] > 90:
@@ -1314,6 +1323,60 @@ def start_gui() -> int:
         
         threading.Thread(target=process, daemon=True).start()
 
+    def on_qingbao_hotkey() -> None:
+        config_path = get_resource_path("configs/情报循环.json")
+        if not config_path.exists():
+            app_logger.error(f"Qingbao loop config not found: {config_path}")
+            ui_call(messagebox.showerror, "Error", f"Config not found: {config_path}")
+            return
+
+        if recorder.recording:
+            from automation import load_steps
+            from qingbao_processor import run_qingbao_loop
+
+            params = {
+                "config_found": "configs/情报访问.json",
+                "config_not_found": "configs/好友列表下滑.json",
+                "max_clicks": 5,
+                "max_recognitions": 20,
+                "match_threshold": 0.7,
+            }
+
+            try:
+                data = load_steps(config_path)
+                if isinstance(data, list) and data:
+                    step = data[0]
+                    if step.get("action") == "qingbao_loop":
+                        params.update(
+                            {
+                                "config_found": step.get("config_found", params["config_found"]),
+                                "config_not_found": step.get("config_not_found", params["config_not_found"]),
+                                "max_clicks": int(step.get("max_clicks", params["max_clicks"])),
+                                "max_recognitions": int(step.get("max_recognitions", params["max_recognitions"])),
+                                "match_threshold": float(step.get("match_threshold", params["match_threshold"])),
+                            }
+                        )
+            except Exception as exc:
+                app_logger.error(f"Failed to load qingbao params: {exc}")
+
+            recorder._add_event("qingbao_loop", **params)
+            status_var.set("Qingbao loop step recorded")
+            app_logger.info("Recorded qingbao_loop step")
+
+            def execute_qingbao_loop() -> None:
+                try:
+                    recorder._skip_recording = True
+                    run_qingbao_loop(**params)
+                finally:
+                    recorder._skip_recording = False
+
+            threading.Thread(target=execute_qingbao_loop, daemon=True).start()
+            return
+
+        config_var.set(str(config_path))
+        app_logger.info(f"Hotkey qingbao loop: {config_path}")
+        run_unified_config()
+
     def start_hotkey_listener() -> None:
         nonlocal hotkey_listener, goods_listener
         if hotkey_listener is None:
@@ -1325,7 +1388,8 @@ def start_gui() -> int:
             goods_listener = keyboard.GlobalHotKeys(
                 {
                     "<ctrl>+<shift>+s": lambda: ui_call(on_goods_capture),
-                    "<ctrl>+<shift>+p": lambda: ui_call(on_home_assist_ocr)
+                    "<ctrl>+<shift>+p": lambda: ui_call(on_home_assist_ocr),
+                    "<ctrl>+<shift>+a": lambda: ui_call(on_qingbao_hotkey)
                 }
             )
             goods_listener.start()

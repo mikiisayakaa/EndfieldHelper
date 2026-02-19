@@ -369,6 +369,7 @@ def run_timeline(
     data: dict,
     stop_check: Callable[[], bool] | None = None,
     event_callback: Callable[[dict], None] | None = None,
+    wait_for_events: bool = False,
 ) -> None:
     """Execute timeline using main thread scheduling + spawned worker threads for each event."""
     timeline = data.get("timeline", [])
@@ -388,6 +389,7 @@ def run_timeline(
     # Track all pressed keys to clean up afterwards
     pressed_keys: dict[str, int] = {}  # key_name -> press_count
     pressed_keys_lock = threading.Lock()
+    event_threads: list[threading.Thread] = []
     
     def run_event(event: dict) -> None:
         """Execute a single event in a worker thread."""
@@ -452,7 +454,12 @@ def run_timeline(
                     if config_path.exists():
                         data = load_steps(config_path)
                         # Execute the entire config file
-                        run_timeline(data, stop_check=stop_check, event_callback=None)
+                        run_timeline(
+                            data,
+                            stop_check=stop_check,
+                            event_callback=None,
+                            wait_for_events=True,
+                        )
                 except Exception as e:
                     print(f"Error executing config_action: {e}")
         elif event_type == "goods_ocr":
@@ -493,7 +500,7 @@ def run_timeline(
                 print(f"Error executing goods_ocr: {e}")
         elif event_type == "home_assist_ocr":
             # Home Assistant OCR - recognize template and click if confidence > 90%
-            from goods_processor import recognize_template
+            from ocr import recognize_template
             
             try:
                 # Take full screenshot
@@ -516,6 +523,29 @@ def run_timeline(
                     print(f"home_assist_ocr: Template not recognized (confidence: {confidence:.1f}%)")
             except Exception as e:
                 print(f"Error executing home_assist_ocr: {e}")
+        elif event_type == "qingbao_loop":
+            from qingbao_processor import run_qingbao_loop
+
+            try:
+                config_found = event.get("config_found")
+                config_not_found = event.get("config_not_found")
+                max_clicks = int(event.get("max_clicks", 5))
+                max_recognitions = int(event.get("max_recognitions", 20))
+                match_threshold = float(event.get("match_threshold", 0.7))
+
+                if not config_found or not config_not_found:
+                    raise ValueError("qingbao_loop requires config_found and config_not_found")
+
+                run_qingbao_loop(
+                    config_found=config_found,
+                    config_not_found=config_not_found,
+                    max_clicks=max_clicks,
+                    max_recognitions=max_recognitions,
+                    match_threshold=match_threshold,
+                    stop_check=stop_check,
+                )
+            except Exception as e:
+                print(f"Error executing qingbao_loop: {e}")
     
     # Main thread scheduling loop
     try:
@@ -536,8 +566,14 @@ def run_timeline(
                 time.sleep(min(0.01, remaining))
             
             # Spawn worker thread to execute this event (non-blocking)
-            threading.Thread(target=run_event, args=(event,), daemon=True).start()
+            event_thread = threading.Thread(target=run_event, args=(event,), daemon=True)
+            event_thread.start()
+            event_threads.append(event_thread)
     finally:
+        if wait_for_events:
+            # Wait for all event threads to finish before returning
+            for event_thread in event_threads:
+                event_thread.join()
         # Release all pressed keys to ensure no keys are stuck
         with pressed_keys_lock:
             for key_name, count in pressed_keys.items():
@@ -554,7 +590,6 @@ def run_timeline(
 
 def run_step(
     step: dict,
-    dry_run: bool,
     stop_check: Callable[[], bool] | None = None,
 ) -> dict | None:
     """Run a single step. Returns result dict for goods_ocr action, None otherwise."""
@@ -573,10 +608,7 @@ def run_step(
         button = step.get("button", "left")
         clicks = int(step.get("clicks", 1))
         interval = float(step.get("interval", 0.0))
-        if dry_run:
-            print(f"DRY: click {button} at ({x},{y}) x{clicks}")
-        else:
-            _mouse_click(x=x, y=y, clicks=clicks, interval=interval, button=button)
+        _mouse_click(x=x, y=y, clicks=clicks, interval=interval, button=button)
 
     elif action == "key":
         key = step.get("key")
@@ -589,38 +621,29 @@ def run_step(
             # New format: hold key for specified duration
             presses = int(step.get("presses", 1))
             interval = float(step.get("interval", 0.0))
-            if dry_run:
-                print(f"DRY: hold key '{key}' for {duration}s x{presses}")
-            else:
-                for _ in range(presses):
-                    if stop_check and stop_check():
-                        raise StopExecution("Stopped")
-                    # Use pynput to press and hold key
-                    from pynput.keyboard import Controller, Key
-                    controller = Controller()
-                    _hold_key_for_duration(controller, key, duration, stop_check)
-                    if interval > 0:
-                        _sleep_with_stop(interval, stop_check)
+            for _ in range(presses):
+                if stop_check and stop_check():
+                    raise StopExecution("Stopped")
+                # Use pynput to press and hold key
+                from pynput.keyboard import Controller, Key
+                controller = Controller()
+                _hold_key_for_duration(controller, key, duration, stop_check)
+                if interval > 0:
+                    _sleep_with_stop(interval, stop_check)
         else:
             # Old format: simple key press
             presses = int(step.get("presses", 1))
             interval = float(step.get("interval", 0.0))
-            if dry_run:
-                print(f"DRY: press key '{key}' x{presses}")
-            else:
-                for _ in range(presses):
-                    if stop_check and stop_check():
-                        raise StopExecution("Stopped")
-                    pyautogui.press(key)
-                    if interval > 0:
-                        _sleep_with_stop(interval, stop_check)
+            for _ in range(presses):
+                if stop_check and stop_check():
+                    raise StopExecution("Stopped")
+                pyautogui.press(key)
+                if interval > 0:
+                    _sleep_with_stop(interval, stop_check)
 
     elif action == "sleep":
         seconds = float(step.get("seconds", 0))
-        if dry_run:
-            print(f"DRY: sleep {seconds}s")
-        else:
-            _sleep_with_stop(seconds, stop_check)
+        _sleep_with_stop(seconds, stop_check)
 
     elif action == "drag":
         start_x = step.get("start_x")
@@ -631,75 +654,88 @@ def run_step(
             raise ValueError(f"Step '{name}' missing drag coordinates.")
         duration = float(step.get("duration", 0.0))
         button = step.get("button", "left")
-        if dry_run:
-            print(
-                f"DRY: drag {button} from ({start_x},{start_y}) to ({end_x},{end_y})"
-            )
-        else:
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            _mouse_drag(start_x, start_y, end_x, end_y, duration=duration, button=button)
+        if stop_check and stop_check():
+            raise StopExecution("Stopped")
+        _mouse_drag(start_x, start_y, end_x, end_y, duration=duration, button=button)
+
+    elif action == "qingbao_loop":
+        from qingbao_processor import run_qingbao_loop
+
+        config_found = step.get("config_found")
+        config_not_found = step.get("config_not_found")
+        max_clicks = int(step.get("max_clicks", 5))
+        max_recognitions = int(step.get("max_recognitions", 20))
+        match_threshold = float(step.get("match_threshold", 0.7))
+
+        if not config_found or not config_not_found:
+            raise ValueError(f"Step '{name}' missing config_found/config_not_found")
+
+        run_qingbao_loop(
+            config_found=config_found,
+            config_not_found=config_not_found,
+            max_clicks=max_clicks,
+            max_recognitions=max_recognitions,
+            match_threshold=match_threshold,
+            stop_check=stop_check,
+        )
 
     elif action == "goods_ocr":
         result = None
-        if dry_run:
-            print(f"DRY: goods OCR capture and recognize")
-        else:
-            from goods_processor import (
-                process_goods_image,
-                analyze_goods_data,
-                format_goods_ocr_items,
-            )
+        from goods_processor import (
+            process_goods_image,
+            analyze_goods_data,
+            format_goods_ocr_items,
+        )
 
-            result = process_goods_image(save_screenshot=False)
-            logger = logging.getLogger("app")
-            logger.info(
-                "goods_ocr result: template=%s region=%s cols=%s rows=%s",
-                result.get("template"),
-                result.get("region"),
-                result.get("cols"),
-                result.get("rows"),
-            )
-            for item_line in format_goods_ocr_items(result):
-                logger.info("goods_ocr item: %s", item_line)
+        result = process_goods_image(save_screenshot=False)
+        logger = logging.getLogger("app")
+        logger.info(
+            "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+            result.get("template"),
+            result.get("region"),
+            result.get("cols"),
+            result.get("rows"),
+        )
+        for item_line in format_goods_ocr_items(result):
+            logger.info("goods_ocr item: %s", item_line)
+        
+        # Analyze and perform action based on result
+        analysis = analyze_goods_data(result)
+        if analysis:
+            # Found optimal item (green arrow with max percent), click on it
+            center_x = analysis["center_x"]
+            center_y = analysis["center_y"]
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            print(f"goods_ocr: Clicking at ({center_x}, {center_y}) - Row {analysis['row']}, Col {analysis['col']}, {analysis['percent']}")
+            _mouse_click(center_x, center_y)
             
-            # Analyze and perform action based on result
-            analysis = analyze_goods_data(result)
-            if analysis:
-                # Found optimal item (green arrow with max percent), click on it
-                center_x = analysis["center_x"]
-                center_y = analysis["center_y"]
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                print(f"goods_ocr: Clicking at ({center_x}, {center_y}) - Row {analysis['row']}, Col {analysis['col']}, {analysis['percent']}")
-                _mouse_click(center_x, center_y)
-                
-                # Execute follow-up actions after successful click
-                # 1. Drag from (1057, 1086) to (1385, 1086) with 0.3s duration
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                print(f"goods_ocr: Dragging from (1057, 1086) to (1385, 1086)")
-                _mouse_drag(1057, 1086, 1385, 1086, duration=0.3, button="left")
-                _sleep_with_stop(0.3, stop_check)
-                
-                # 2. Click at (1972, 1254)
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                print(f"goods_ocr: Clicking at (1972, 1254)")
-                _mouse_click(1972, 1254)
-                _sleep_with_stop(0.8, stop_check)
-                
-                # 3. Click at (1972, 1254) again
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                print(f"goods_ocr: Clicking at (1972, 1254) again")
-                _mouse_click(1972, 1254)
-            else:
-                # No optimal item found, sleep instead
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                print(f"goods_ocr: No optimal item found, sleeping 0.5s")
-                _sleep_with_stop(0.5, stop_check)
+            # Execute follow-up actions after successful click
+            # 1. Drag from (1057, 1086) to (1385, 1086) with 0.3s duration
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            print(f"goods_ocr: Dragging from (1057, 1086) to (1385, 1086)")
+            _mouse_drag(1057, 1086, 1385, 1086, duration=0.3, button="left")
+            _sleep_with_stop(0.3, stop_check)
+            
+            # 2. Click at (1972, 1254)
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            print(f"goods_ocr: Clicking at (1972, 1254)")
+            _mouse_click(1972, 1254)
+            _sleep_with_stop(0.8, stop_check)
+            
+            # 3. Click at (1972, 1254) again
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            print(f"goods_ocr: Clicking at (1972, 1254) again")
+            _mouse_click(1972, 1254)
+        else:
+            # No optimal item found, sleep instead
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            print(f"goods_ocr: No optimal item found, sleeping 0.5s")
+            _sleep_with_stop(0.5, stop_check)
         
         if delay > 0:
             _sleep_with_stop(delay, stop_check)
@@ -707,31 +743,28 @@ def run_step(
 
     elif action == "home_assist_ocr":
         result = None
-        if dry_run:
-            print(f"DRY: home assist OCR capture and recognize")
+        from ocr import recognize_template
+        
+        # Take full screenshot
+        screenshot = pyautogui.screenshot()
+        
+        # Recognize template: templates/home_use_assistance
+        result = recognize_template(screenshot, "home_use_assistance.png")
+        
+        if result and result['confidence'] > 90:
+            x, y = result['x'], result['y']
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            print(f"home_assist_ocr: Template recognized with {result['confidence']:.1f}% confidence")
+            
+            # Click twice with 0.5s interval
+            _mouse_click(x, y)
+            _sleep_with_stop(0.5, stop_check)
+            _mouse_click(x, y)
+            print(f"home_assist_ocr: Clicked at ({x}, {y})")
         else:
-            from goods_processor import recognize_template
-            
-            # Take full screenshot
-            screenshot = pyautogui.screenshot()
-            
-            # Recognize template: templates/home_use_assistance
-            result = recognize_template(screenshot, "home_use_assistance.png")
-            
-            if result and result['confidence'] > 90:
-                x, y = result['x'], result['y']
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                print(f"home_assist_ocr: Template recognized with {result['confidence']:.1f}% confidence")
-                
-                # Click twice with 0.5s interval
-                _mouse_click(x, y)
-                _sleep_with_stop(0.5, stop_check)
-                _mouse_click(x, y)
-                print(f"home_assist_ocr: Clicked at ({x}, {y})")
-            else:
-                confidence = result['confidence'] if result else 0
-                print(f"home_assist_ocr: Template not recognized (confidence: {confidence:.1f}%)")
+            confidence = result['confidence'] if result else 0
+            print(f"home_assist_ocr: Template not recognized (confidence: {confidence:.1f}%)")
         
         if delay > 0:
             _sleep_with_stop(delay, stop_check)
@@ -742,21 +775,18 @@ def run_step(
         if not config_path_str:
             raise ValueError(f"Step '{name}' missing config path for config action.")
         
-        if dry_run:
-            print(f"DRY: execute config: {config_path_str}")
-        else:
-            config_path = Path(config_path_str)
-            if not config_path.exists():
-                raise FileNotFoundError(f"Config file not found: {config_path}")
-            
-            print(f"Loading nested config: {config_path}")
-            nested_steps = load_steps(config_path)
-            
-            # Execute all nested steps
-            for nested_step in nested_steps:
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                result = run_step(nested_step, dry_run=False, stop_check=stop_check)
+        config_path = Path(config_path_str)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {config_path}")
+        
+        print(f"Loading nested config: {config_path}")
+        nested_steps = load_steps(config_path)
+        
+        # Execute all nested steps
+        for nested_step in nested_steps:
+            if stop_check and stop_check():
+                raise StopExecution("Stopped")
+            result = run_step(nested_step, stop_check=stop_check)
         
         if delay > 0:
             _sleep_with_stop(delay, stop_check)
