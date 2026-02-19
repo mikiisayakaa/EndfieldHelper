@@ -192,6 +192,7 @@ def start_gui() -> int:
     edit_config_type = None  # Store the type: 'composite', 'timeline', or 'legacy'
     re_recording_step_index = None  # Track which step is being re-recorded
     re_recording_mode = None  # Track re-recording mode: 're-record', 'insert-above', 'insert-below'
+    edit_play_index = 0  # Track single-step playback position in edit mode
     ocr_operations = [
         ("goods_ocr_gudi", "goods_ocr (gudi)"),
         ("goods_ocr_wuling", "goods_ocr (wuling)"),
@@ -859,7 +860,7 @@ def start_gui() -> int:
     
     def refresh_edit_tree() -> None:
         """Refresh the tree view using the current edit_data in memory."""
-        nonlocal edit_config_type
+        nonlocal edit_config_type, edit_play_index
         
         if edit_data is None:
             edit_tree.delete(*edit_tree.get_children())
@@ -867,6 +868,7 @@ def start_gui() -> int:
             return
         
         edit_tree.delete(*edit_tree.get_children())
+        edit_play_index = 0
         
         # Determine config type
         if isinstance(edit_data, dict) and edit_data.get("type") == "composite":
@@ -963,6 +965,120 @@ def start_gui() -> int:
         except Exception as e:
             app_logger.error(f"Failed to save edited config: {e}")
             messagebox.showerror("Error", f"Failed to save: {e}")
+
+    def step_play() -> None:
+        """Play one step per click in edit mode."""
+        nonlocal edit_play_index, running
+
+        if recorder.recording or running:
+            return
+        if edit_data is None:
+            messagebox.showinfo("Info", i18n.t("load_config_first"))
+            return
+
+        def execute_config_recursive_for_step(config_path: Path | str) -> None:
+            data = load_steps(config_path)
+            if isinstance(data, dict) and "timeline" in data:
+                from automation import run_timeline
+                run_timeline(data, stop_check=stop_event.is_set, wait_for_events=True)
+            elif isinstance(data, dict) and data.get("type") == "composite":
+                for item in data.get("configs", []):
+                    if stop_event.is_set():
+                        raise StopExecution()
+                    sub_config_path = item.get("config") if isinstance(item, dict) else item
+                    if not sub_config_path:
+                        continue
+                    execute_config_recursive_for_step(Path(sub_config_path))
+            else:
+                for step in data:
+                    if stop_event.is_set():
+                        raise StopExecution()
+                    run_step(step, stop_check=stop_event.is_set)
+
+        def finalize() -> None:
+            nonlocal running
+            running = False
+            stop_event.clear()
+            set_controls(recorder.recording, running)
+            show_gui()
+
+        if edit_config_type == "composite":
+            configs = edit_data.get("configs", [])
+            if not configs:
+                status_var.set("No steps to play.")
+                return
+            if edit_play_index >= len(configs):
+                edit_play_index = 0
+            item = configs[edit_play_index]
+            config_path = item.get("config") if isinstance(item, dict) else item
+            if not config_path:
+                status_var.set("Config path missing.")
+                return
+            total_steps = len(configs)
+            label = f"Step play {edit_play_index + 1}/{total_steps}"
+
+            def action() -> None:
+                execute_config_recursive_for_step(Path(config_path))
+
+        elif edit_config_type == "timeline":
+            timeline = edit_data.get("timeline", [])
+            if not timeline:
+                status_var.set("No steps to play.")
+                return
+            if edit_play_index >= len(timeline):
+                edit_play_index = 0
+            event = timeline[edit_play_index].copy()
+            event["time"] = 0
+            data = {"timeline": [event]}
+            goods_template = edit_data.get("goods_template")
+            if goods_template:
+                data["goods_template"] = goods_template
+            total_steps = len(timeline)
+            label = f"Step play {edit_play_index + 1}/{total_steps}"
+
+            def action() -> None:
+                from automation import run_timeline
+                run_timeline(data, stop_check=stop_event.is_set, wait_for_events=True)
+
+        elif edit_config_type == "legacy":
+            steps = edit_data if isinstance(edit_data, list) else []
+            if not steps:
+                status_var.set("No steps to play.")
+                return
+            if edit_play_index >= len(steps):
+                edit_play_index = 0
+            step = steps[edit_play_index]
+            total_steps = len(steps)
+            label = f"Step play {edit_play_index + 1}/{total_steps}"
+
+            def action() -> None:
+                run_step(step, stop_check=stop_event.is_set)
+
+        else:
+            return
+
+        def execute() -> None:
+            nonlocal edit_play_index, running
+            try:
+                pyautogui.FAILSAFE = True
+                running = True
+                stop_event.clear()
+                set_controls(recorder.recording, running)
+                status_var.set(label)
+                minimize_gui()
+                action()
+                edit_play_index += 1
+                if edit_play_index >= total_steps:
+                    edit_play_index = 0
+            except StopExecution:
+                status_var.set("Step play stopped.")
+            except (OSError, ValueError) as exc:
+                messagebox.showerror("Error", f"Failed to run step: {exc}")
+                status_var.set("Idle")
+            finally:
+                finalize()
+
+        threading.Thread(target=execute, daemon=True).start()
     
     def delete_edit_step() -> None:
         """Delete the selected step from the edit view."""
@@ -1397,7 +1513,6 @@ def start_gui() -> int:
         start_button.config(
             state=tk.DISABLED if (recording or is_running) else tk.NORMAL
         )
-        stop_button.config(state=tk.NORMAL if (recording or is_running) else tk.DISABLED)
         run_unified_button.config(state=tk.DISABLED if (recording or is_running) else tk.NORMAL)
         browse_config_button.config(
             state=tk.DISABLED if (recording or is_running) else tk.NORMAL
@@ -1473,14 +1588,6 @@ def start_gui() -> int:
             app_logger.info(f"Recording stopped. Saved {step_count} steps to {config_path}")
         set_controls(False, running)
         show_gui()
-
-    def stop_action() -> None:
-        if running:
-            stop_event.set()
-            status_var.set("Stopping...")
-            return
-        if recorder.recording:
-            stop_recording()
 
     padding = {"padx": 8, "pady": 6}
 
@@ -1611,7 +1718,7 @@ def start_gui() -> int:
     recording_tab = tk.Frame(notebook)
     notebook.add(recording_tab, text=i18n.t("recording"))
 
-    # Button row - Start and Stop buttons only (Run Config moved to row 0)
+    # Button row - Start button only (Stop is now Ctrl+X only)
     button_frame = tk.Frame(recording_tab)
     button_frame.pack(fill=tk.X, padx=8, pady=6)
     start_button = ttk.Button(
@@ -1623,16 +1730,6 @@ def start_gui() -> int:
     )
     ui_elements['start_button'] = (start_button, 'start_recording', True)
     start_button.pack(side=tk.LEFT, padx=(0, 4))
-    stop_button = ttk.Button(
-        button_frame,
-        text=i18n.t("stop"),
-        command=stop_action,
-        state=tk.DISABLED,
-        width=8,
-        style="Modern.TButton",
-    )
-    ui_elements['stop_button'] = (stop_button, 'stop', True)
-    stop_button.pack(side=tk.LEFT, padx=4)
 
     # ===== TAB 2: Composite Mode =====
     composite_tab = tk.Frame(notebook)
@@ -1731,6 +1828,15 @@ def start_gui() -> int:
         style="Modern.TButton",
     )
     save_edit_button.pack(side=tk.LEFT, padx=(0, 4))
+
+    step_play_button = ttk.Button(
+        edit_button_frame,
+        text=i18n.t("step_play"),
+        command=lambda: step_play(),
+        width=10,
+        style="Modern.TButton",
+    )
+    step_play_button.pack(side=tk.LEFT, padx=(0, 4))
 
     # Steps list frame
     edit_list_frame = tk.LabelFrame(edit_tab, text=i18n.t("edit_steps"), padx=4, pady=4)
