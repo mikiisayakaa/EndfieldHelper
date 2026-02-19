@@ -70,9 +70,11 @@ def parse_grid_from_template(template_path: Path | str) -> tuple[int, int]:
 
 
 def find_template_region(
-    full_screen_image: Image.Image,
+    full_screen_image: Image.Image | None,
     template_path: Path = TEMPLATE_IMAGE_PATH,
     min_matches: int = 4,
+    full_screen_cv: np.ndarray | None = None,
+    screen_gray: np.ndarray | None = None,
 ) -> tuple[int, int, int, int] | None:
     """
     Find the goods region in the full screen image using SIFT feature matching.
@@ -90,15 +92,19 @@ def find_template_region(
     if not template_path.exists():
         return None
     
-    # Convert PIL images to OpenCV format (BGR)
-    full_screen_cv = cv2.cvtColor(np.array(full_screen_image), cv2.COLOR_RGB2BGR)
+    if full_screen_cv is None or screen_gray is None:
+        if full_screen_image is None:
+            raise ValueError("full_screen_image is required when no precomputed screen is provided")
+        # Convert PIL images to OpenCV format (BGR)
+        full_screen_cv = cv2.cvtColor(np.array(full_screen_image), cv2.COLOR_RGB2BGR)
     template_img = cv2.imread(str(template_path))
     
     if template_img is None:
         return None
     
     # Convert to grayscale
-    screen_gray = cv2.cvtColor(full_screen_cv, cv2.COLOR_BGR2GRAY)
+    if screen_gray is None:
+        screen_gray = cv2.cvtColor(full_screen_cv, cv2.COLOR_BGR2GRAY)
     template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
     
     # Initialize SIFT detector
@@ -205,6 +211,29 @@ def find_template_region(
     print(f"SIFT: Template matched! Scale: {scale_factor:.2f}x, Matches: {len(good_matches)}, Confidence: {confidence:.2%}")
     
     return (x1, y1, x2, y2)
+
+
+def _resolve_goods_group(template_path: Path | str | None) -> str | None:
+    if not template_path:
+        return None
+    name = Path(template_path).name.lower()
+    if "gudi" in name:
+        return "gudi"
+    if "wuling" in name:
+        return "wuling"
+    return None
+
+
+def _template_sort_key(path: Path) -> tuple[int, str]:
+    match = re.search(r"(\d+)$", path.stem)
+    if match:
+        return (int(match.group(1)), path.stem)
+    return (0, path.stem)
+
+
+def _load_goods_item_templates(group: str) -> list[Path]:
+    prefix = f"goods_{group}_"
+    return sorted(SCREENSHOT_DIR.glob(f"{prefix}*.png"), key=_template_sort_key)
 
 
 def recognize_template(
@@ -514,88 +543,74 @@ def process_goods_image(image_path: Path | None = None, save_screenshot: bool = 
     Returns:
         Dictionary with OCR results including "goods" list and "region" coordinates.
     """
-    if template_path is None:
-        template_path = TEMPLATE_IMAGE_PATH
-    else:
-        template_path = Path(template_path)
-    
-    # Parse grid dimensions from template filename
-    cols, rows = parse_grid_from_template(template_path)
-    used_region = SCREENSHOT_REGION  # Track which region is being used
-    
+    template_group = _resolve_goods_group(template_path)
+    if template_group is None:
+        raise ValueError("goods_ocr requires template group: gudi or wuling")
+
     if image_path is None:
         # Take full screen screenshot
         full_screen = ImageGrab.grab()
-        
-        # Try to find the goods region using template matching
-        detected_region = find_template_region(full_screen, template_path)
-        
-        if detected_region:
-            # Use detected region
-            x1, y1, x2, y2 = detected_region
-            image = full_screen.crop((x1, y1, x2, y2))
-            used_region = detected_region
-            print(f"Template matched! Region: ({x1}, {y1}, {x2}, {y2})")
-        else:
-            # Fallback to hardcoded region if template matching fails
-            print(f"Template matching failed, using fallback region: {SCREENSHOT_REGION}")
-            x1, y1, x2, y2 = SCREENSHOT_REGION
-            image = full_screen.crop((x1, y1, x2, y2))
-            used_region = SCREENSHOT_REGION
-        
         image_path = "<screenshot>"
-        
-        if save_screenshot:
-            SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            saved_path = SCREENSHOT_DIR / f"goods_{timestamp}.png"
-            image.save(saved_path)
-            image_path = str(saved_path)
-            print(f"Screenshot saved: {saved_path}")
     else:
-        image = Image.open(image_path)
+        full_screen = Image.open(image_path)
 
-    debug_dir = None
-    if _DEBUG_MODE:
+    if save_screenshot and image_path == "<screenshot>":
+        SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        debug_dir = Path(f"debug_goods_{timestamp}")
-        debug_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Debug mode enabled. Saving to {debug_dir}")
+        saved_path = SCREENSHOT_DIR / f"goods_{timestamp}.png"
+        full_screen.save(saved_path)
+        image_path = str(saved_path)
+        print(f"Screenshot saved: {saved_path}")
 
+    template_paths = _load_goods_item_templates(template_group)
+    if not template_paths:
+        raise FileNotFoundError(f"No templates found for group: {template_group}")
+
+    full_screen_cv = cv2.cvtColor(np.array(full_screen), cv2.COLOR_RGB2BGR)
+    screen_gray = cv2.cvtColor(full_screen_cv, cv2.COLOR_BGR2GRAY)
     reader = easyocr.Reader(["en"], gpu=_EASYOCR_GPU)
     results = []
 
-    for row, col, tile in split_tiles(image, rows=rows, cols=cols):
+    for template_img in template_paths:
+        region = find_template_region(
+            None,
+            template_path=template_img,
+            full_screen_cv=full_screen_cv,
+            screen_gray=screen_gray,
+        )
+        if not region:
+            continue
+        x1, y1, x2, y2 = region
+        tile = full_screen.crop((x1, y1, x2, y2))
         tile_bgr = cv2.cvtColor(np.array(tile), cv2.COLOR_RGB2BGR)
-
-        if debug_dir:
-            cv2.imwrite(str(debug_dir / f"1_full_tile_r{row}_c{col}.png"), tile_bgr)
-
         roi_bgr = crop_percent_roi(tile_bgr)
-
-        if debug_dir:
-            cv2.imwrite(str(debug_dir / f"2_roi_r{row}_c{col}.png"), roi_bgr)
-
         percent_text, percent_bbox = ocr_percent_and_bbox(roi_bgr, reader)
         arrow_color = detect_arrow_color(roi_bgr, percent_bbox)
+        center_x = int((x1 + x2) / 2)
+        center_y = int((y1 + y2) / 2)
         results.append(
             {
-                "row": row,
-                "col": col,
+                "row": None,
+                "col": None,
                 "percent": percent_text,
                 "arrow": arrow_color,
+                "center_x": center_x,
+                "center_y": center_y,
+                "template": template_img.name,
+                "bbox": [x1, y1, x2, y2],
             }
         )
 
     return {
         "timestamp": datetime.now().isoformat(),
         "screenshot": str(image_path),
-        "debug_dir": str(debug_dir) if debug_dir else None,
+        "debug_dir": None,
         "goods": results,
-        "region": used_region,
-        "cols": cols,
-        "rows": rows,
-        "template": str(template_path),
+        "region": None,
+        "cols": None,
+        "rows": None,
+        "template": template_group,
+        "template_group": template_group,
     }
 
 
@@ -646,19 +661,22 @@ def analyze_goods_data(ocr_result: dict, cols: int = 7, rows: int = 2) -> dict |
     col = max_item.get("col")  # 1-7
     percent = max_item.get("percent")
     percent_value = extract_percent_value(percent)
-    
-    # Get the region used (from ocr_result or use default)
-    region = ocr_result.get("region", SCREENSHOT_REGION)
-    x1, y1, x2, y2 = region
-    width = x2 - x1
-    height = y2 - y1
-    
-    tile_width = width / cols
-    tile_height = height / rows
-    
-    # Center position of the tile in screen coordinates
-    center_x = int(x1 + (col - 0.5) * tile_width)
-    center_y = int(y1 + (row - 0.5) * tile_height)
+
+    center_x = max_item.get("center_x")
+    center_y = max_item.get("center_y")
+    if center_x is None or center_y is None:
+        # Get the region used (from ocr_result or use default)
+        region = ocr_result.get("region", SCREENSHOT_REGION)
+        x1, y1, x2, y2 = region
+        width = x2 - x1
+        height = y2 - y1
+
+        tile_width = width / cols
+        tile_height = height / rows
+
+        # Center position of the tile in screen coordinates
+        center_x = int(x1 + (col - 0.5) * tile_width)
+        center_y = int(y1 + (row - 0.5) * tile_height)
     
     return {
         "row": row,
@@ -668,6 +686,38 @@ def analyze_goods_data(ocr_result: dict, cols: int = 7, rows: int = 2) -> dict |
         "center_x": center_x,
         "center_y": center_y,
     }
+
+
+def format_goods_ocr_items(ocr_result: dict) -> list[str]:
+    """Format OCR items for logging (direction + percent per tile)."""
+    goods_list = ocr_result.get("goods", []) if ocr_result else []
+    formatted: list[str] = []
+
+    for item in goods_list:
+        row = item.get("row")
+        col = item.get("col")
+        percent = item.get("percent")
+        arrow = item.get("arrow")
+        template_name = item.get("template")
+
+        if arrow == "green":
+            direction = "up"
+        elif arrow == "red":
+            direction = "down"
+        else:
+            direction = "unknown"
+
+        percent_text = percent if percent is not None else "none"
+        if template_name:
+            formatted.append(
+                f"row={row} col={col} template={template_name} direction={direction} percent={percent_text}"
+            )
+        else:
+            formatted.append(
+                f"row={row} col={col} direction={direction} percent={percent_text}"
+            )
+
+    return formatted
 
 
 def on_capture() -> None:

@@ -15,7 +15,7 @@ from pynput import keyboard, mouse
 from PIL import Image, ImageTk
 
 from automation import Recorder, StopExecution, load_steps, run_step, save_steps
-from goods_processor import process_goods_image, analyze_goods_data
+from goods_processor import process_goods_image, analyze_goods_data, format_goods_ocr_items
 from i18n import I18n
 
 # ===== Directional Mouse Control via Arrow Keys =====
@@ -182,7 +182,7 @@ def start_gui() -> int:
     status_var = tk.StringVar(value=i18n.t("idle"))
     position_var = tk.StringVar(value="(0, 0)")
     click_hint_var = tk.StringVar(value="")
-    goods_template_var = tk.StringVar(value="goods_template_gudi_7x2.png")
+    goods_template_var = tk.StringVar(value="gudi")
     config_comment_var = tk.StringVar(value="")  # Config comments
     config_folder = None  # Store the selected config folder
     config_files = []  # Store the list of config files
@@ -490,329 +490,138 @@ def start_gui() -> int:
     def run_unified_config() -> None:
         """
         Unified config runner that auto-detects and executes:
-        - Composite configs (if composite_configs list is populated)
-        - Timeline format configs (dict with 'timeline' key)
-        - Legacy format configs (list of steps)
+        - Config files specified in config_var (handles any format: timeline, composite, or legacy)
+        - composite_configs is only for list editing and saving, not for execution
         """
         nonlocal running
         if recorder.recording or running:
             return
 
-        # Determine mode: composite or single config
-        use_composite = bool(composite_configs)
+        config_path = Path(config_var.get().strip())
+        if not config_path.name:
+            messagebox.showerror(i18n.t("error"), i18n.t("error_choose_config"))
+            return
+        if not config_path.exists():
+            messagebox.showerror(i18n.t("error"), i18n.t("config_not_found"))
+            return
         
-        if use_composite:
-            # Composite mode: execute all configs in the list sequentially
-            log_text.config(state=tk.NORMAL)
-            log_text.delete("1.0", tk.END)
-            log_text.config(state=tk.DISABLED)
+        # Define recursive config executor (shared by both modes)
+        def execute_config_recursive(config_path: Path | str, depth: int = 0) -> None:
+            """Recursively execute a config that may contain nested composites."""
+            indent = "  " * depth
+            data = load_steps(config_path)
             
-            stop_event.clear()
-            running = True
-            set_controls(recorder.recording, running)
-            status_var.set("Running composite config...")
-            app_logger.info(f"Starting composite config execution with {len(composite_configs)} configs")
-            minimize_gui()
-
-            def append_log_line(line: str) -> None:
-                log_text.config(state=tk.NORMAL)
-                log_text.insert(tk.END, f"{line}\n")
-                log_text.see(tk.END)
-                log_text.config(state=tk.DISABLED)
-                app_logger.info(line)
-
-            def finalize_run() -> None:
-                nonlocal running
-                running = False
-                stop_event.clear()
-                set_controls(recorder.recording, running)
-                show_gui()
-
-            def execute() -> None:
-                try:
-                    pyautogui.FAILSAFE = True
-                    
-                    for idx, config_path in enumerate(composite_configs, 1):
-                        if stop_event.is_set():
-                            raise StopExecution()
-                        
-                        ui_call(status_var.set, f"Running config {idx}/{len(composite_configs)}: {Path(config_path).name}")
-                        ui_call(append_log_line, f"=== Config {idx}/{len(composite_configs)}: {Path(config_path).name} ===")
-                        
-                        try:
-                            data = load_steps(Path(config_path))
-                            
-                            # Auto-detect format
-                            if isinstance(data, dict) and "timeline" in data:
-                                # Timeline format
-                                from automation import run_timeline
-                                timeline = data.get("timeline", [])
-                                ui_call(append_log_line, f"Running timeline with {len(timeline)} events")
-                                
-                                def log_event(event: dict) -> None:
-                                    event_time = float(event.get("time", 0))
-                                    event_type = event.get("type")
-                                    if event_type == "key_press":
-                                        key_name = event.get("key", "?")
-                                        line = f"T{event_time:.3f}: key_press {key_name}"
-                                    elif event_type == "key_release":
-                                        key_name = event.get("key", "?")
-                                        line = f"T{event_time:.3f}: key_release {key_name}"
-                                    elif event_type == "click":
-                                        x = event.get("x")
-                                        y = event.get("y")
-                                        button = event.get("button", "left")
-                                        line = f"T{event_time:.3f}: click {button} ({x}, {y})"
-                                    elif event_type == "hold":
-                                        x = event.get("x")
-                                        y = event.get("y")
-                                        button = event.get("button", "left")
-                                        duration = event.get("duration", 0)
-                                        line = f"T{event_time:.3f}: hold {button} ({x}, {y}) {duration:.3f}s"
-                                    elif event_type == "drag":
-                                        start_x = event.get("start_x")
-                                        start_y = event.get("start_y")
-                                        end_x = event.get("end_x")
-                                        end_y = event.get("end_y")
-                                        duration = event.get("duration", 0)
-                                        button = event.get("button", "left")
-                                        line = f"T{event_time:.3f}: drag {button} ({start_x}, {start_y}) -> ({end_x}, {end_y}) {duration:.3f}s"
-                                    elif event_type == "goods_ocr":
-                                        line = f"T{event_time:.3f}: goods_ocr (capture, recognize, click cheapest)"
-                                    else:
-                                        line = f"T{event_time:.3f}: {event_type}"
-                                    ui_call(append_log_line, line)
-                                
-                                run_timeline(
-                                    data,
-                                    stop_check=stop_event.is_set,
-                                    event_callback=log_event,
-                                )
-                            else:
-                                # Legacy format
-                                ui_call(append_log_line, f"Running legacy format with {len(data)} steps")
-                                for step in data:
-                                    if stop_event.is_set():
-                                        raise StopExecution()
-                                    run_step(step)
-                            
-                            ui_call(append_log_line, f"Config {idx} completed")
-                        
-                        except StopExecution:
-                            raise
-                        except Exception as e:
-                            ui_call(append_log_line, f"Error in config {idx}: {e}")
-                            app_logger.error(f"Error in config {idx} ({config_path}): {e}", exc_info=True)
-                            # Continue to next config instead of stopping
-                    
-                    ui_call(status_var.set, "Composite run complete.")
-                    app_logger.info("Composite config execution completed successfully")
-                except StopExecution:
-                    ui_call(status_var.set, "Composite run stopped.")
-                    app_logger.info("Composite config execution stopped by user")
-                except Exception as exc:
-                    ui_call(messagebox.showerror, "Error", f"Failed to run composite config: {exc}")
-                    ui_call(status_var.set, "Idle")
-                    app_logger.error(f"Failed to run composite config: {exc}", exc_info=True)
-                finally:
-                    ui_call(finalize_run)
-
-            threading.Thread(target=execute, daemon=True).start()
-        else:
-            # Single config mode: load and execute a single config file
-            config_path = Path(config_var.get().strip())
-            if not config_path.name:
-                messagebox.showerror(i18n.t("error"), i18n.t("error_choose_config"))
-                return
-            if not config_path.exists():
-                messagebox.showerror(i18n.t("error"), i18n.t("config_not_found"))
-                return
-
-            log_text.config(state=tk.NORMAL)
-            log_text.delete("1.0", tk.END)
-            log_text.config(state=tk.DISABLED)
-
-            stop_event.clear()
-            running = True
-            set_controls(recorder.recording, running)
-            status_var.set("Loading config...")
-            app_logger.info(f"Starting to run config: {config_path}")
-            minimize_gui()
-
-            def append_log_line(line: str) -> None:
-                log_text.config(state=tk.NORMAL)
-                log_text.insert(tk.END, f"{line}\n")
-                log_text.see(tk.END)
-                log_text.config(state=tk.DISABLED)
-                app_logger.info(line)
-
-            def finalize_run() -> None:
-                nonlocal running
-                running = False
-                stop_event.clear()
-                set_controls(recorder.recording, running)
-                show_gui()
-
-            def execute() -> None:
-                try:
-                    data = load_steps(config_path)
-                    pyautogui.FAILSAFE = True
-                    
-                    # Auto-detect format
-                    if isinstance(data, dict) and "timeline" in data:
-                        # Timeline format
-                        from automation import run_timeline
-                        timeline = data.get("timeline", [])
-                        ui_call(status_var.set, f"Running timeline with {len(timeline)} events...")
-                        ui_call(append_log_line, f"Running timeline format with {len(timeline)} events")
-                        def log_event(event: dict) -> None:
-                            event_time = float(event.get("time", 0))
-                            event_type = event.get("type")
-                            if event_type == "key_press":
-                                key_name = event.get("key", "?")
-                                line = f"T{event_time:.3f}: key_press {key_name}"
-                            elif event_type == "key_release":
-                                key_name = event.get("key", "?")
-                                line = f"T{event_time:.3f}: key_release {key_name}"
-                            elif event_type == "click":
-                                x = event.get("x")
-                                y = event.get("y")
-                                button = event.get("button", "left")
-                                line = f"T{event_time:.3f}: click {button} ({x}, {y})"
-                            elif event_type == "hold":
-                                x = event.get("x")
-                                y = event.get("y")
-                                button = event.get("button", "left")
-                                duration = event.get("duration", 0)
-                                line = f"T{event_time:.3f}: hold {button} ({x}, {y}) {duration:.3f}s"
-                            elif event_type == "drag":
-                                start_x = event.get("start_x")
-                                start_y = event.get("start_y")
-                                end_x = event.get("end_x")
-                                end_y = event.get("end_y")
-                                duration = event.get("duration", 0)
-                                button = event.get("button", "left")
-                                line = f"T{event_time:.3f}: drag {button} ({start_x}, {start_y}) -> ({end_x}, {end_y}) {duration:.3f}s"
-                            elif event_type == "goods_ocr":
-                                line = f"T{event_time:.3f}: goods_ocr (capture, recognize, click cheapest)"
-                            else:
-                                line = f"T{event_time:.3f}: {event_type}"
-                            ui_call(append_log_line, line)
-
-                        run_timeline(
-                            data,
-                            stop_check=stop_event.is_set,
-                            event_callback=log_event,
-                        )
-                        ui_call(status_var.set, "Run complete.")
-                        app_logger.info("Config execution completed successfully")
-                    elif isinstance(data, dict) and data.get("type") == "composite":
-                        # Composite format - load all configs in the list
-                        composite_list = data.get("configs", [])
-                        config_count = len(composite_list)
-                        ui_call(status_var.set, f"Running composite config with {config_count} items...")
-                        ui_call(append_log_line, f"Running composite format with {config_count} configs")
-                        
-                        for idx, item in enumerate(composite_list, 1):
-                            if stop_event.is_set():
-                                raise StopExecution()
-                            
-                            sub_config_path = item.get("config") if isinstance(item, dict) else item
-                            if not sub_config_path:
-                                continue
-                            
-                            ui_call(status_var.set, f"Running composite config {idx}/{config_count}: {Path(sub_config_path).name}")
-                            ui_call(append_log_line, f"=== Config {idx}/{config_count}: {Path(sub_config_path).name} ===")
-                            
-                            try:
-                                sub_data = load_steps(Path(sub_config_path))
-                                
-                                # Auto-detect format of sub-config
-                                if isinstance(sub_data, dict) and "timeline" in sub_data:
-                                    # Timeline format
-                                    from automation import run_timeline
-                                    sub_timeline = sub_data.get("timeline", [])
-                                    ui_call(append_log_line, f"Running timeline with {len(sub_timeline)} events")
-                                    
-                                    def log_event(event: dict) -> None:
-                                        event_time = float(event.get("time", 0))
-                                        event_type = event.get("type")
-                                        if event_type == "key_press":
-                                            key_name = event.get("key", "?")
-                                            line = f"T{event_time:.3f}: key_press {key_name}"
-                                        elif event_type == "key_release":
-                                            key_name = event.get("key", "?")
-                                            line = f"T{event_time:.3f}: key_release {key_name}"
-                                        elif event_type == "click":
-                                            x = event.get("x")
-                                            y = event.get("y")
-                                            button = event.get("button", "left")
-                                            line = f"T{event_time:.3f}: click {button} ({x}, {y})"
-                                        elif event_type == "hold":
-                                            x = event.get("x")
-                                            y = event.get("y")
-                                            button = event.get("button", "left")
-                                            duration = event.get("duration", 0)
-                                            line = f"T{event_time:.3f}: hold {button} ({x}, {y}) {duration:.3f}s"
-                                        elif event_type == "drag":
-                                            start_x = event.get("start_x")
-                                            start_y = event.get("start_y")
-                                            end_x = event.get("end_x")
-                                            end_y = event.get("end_y")
-                                            duration = event.get("duration", 0)
-                                            button = event.get("button", "left")
-                                            line = f"T{event_time:.3f}: drag {button} ({start_x}, {start_y}) -> ({end_x}, {end_y}) {duration:.3f}s"
-                                        elif event_type == "goods_ocr":
-                                            line = f"T{event_time:.3f}: goods_ocr (capture, recognize, click cheapest)"
-                                        else:
-                                            line = f"T{event_time:.3f}: {event_type}"
-                                        ui_call(append_log_line, line)
-                                    
-                                    run_timeline(
-                                        sub_data,
-                                        stop_check=stop_event.is_set,
-                                        event_callback=log_event,
-                                    )
-                                else:
-                                    # Legacy format
-                                    ui_call(append_log_line, f"Running legacy format with {len(sub_data)} steps")
-                                    for step in sub_data:
-                                        if stop_event.is_set():
-                                            raise StopExecution()
-                                        run_step(step)
-                                
-                                ui_call(append_log_line, f"Config {idx} completed")
-                            
-                            except StopExecution:
-                                raise
-                            except Exception as e:
-                                ui_call(append_log_line, f"Error in config {idx}: {e}")
-                                app_logger.error(f"Error in composite config {idx} ({sub_config_path}): {e}", exc_info=True)
-                                # Continue to next config instead of stopping
-                        
-                        ui_call(status_var.set, "Composite run complete.")
-                        app_logger.info("Composite config execution completed successfully")
+            if isinstance(data, dict) and "timeline" in data:
+                # Timeline format
+                from automation import run_timeline
+                timeline = data.get("timeline", [])
+                ui_call(append_log_line, f"{indent}Running timeline with {len(timeline)} events")
+                
+                def log_event(event: dict) -> None:
+                    event_time = float(event.get("time", 0))
+                    event_type = event.get("type")
+                    if event_type == "key_press":
+                        key_name = event.get("key", "?")
+                        line = f"T{event_time:.3f}: key_press {key_name}"
+                    elif event_type == "key_release":
+                        key_name = event.get("key", "?")
+                        line = f"T{event_time:.3f}: key_release {key_name}"
+                    elif event_type == "click":
+                        x = event.get("x")
+                        y = event.get("y")
+                        button = event.get("button", "left")
+                        line = f"T{event_time:.3f}: click {button} ({x}, {y})"
+                    elif event_type == "hold":
+                        x = event.get("x")
+                        y = event.get("y")
+                        button = event.get("button", "left")
+                        duration = event.get("duration", 0)
+                        line = f"T{event_time:.3f}: hold {button} ({x}, {y}) {duration:.3f}s"
+                    elif event_type == "drag":
+                        start_x = event.get("start_x")
+                        start_y = event.get("start_y")
+                        end_x = event.get("end_x")
+                        end_y = event.get("end_y")
+                        duration = event.get("duration", 0)
+                        button = event.get("button", "left")
+                        line = f"T{event_time:.3f}: drag {button} ({start_x}, {start_y}) -> ({end_x}, {end_y}) {duration:.3f}s"
+                    elif event_type == "goods_ocr":
+                        line = f"T{event_time:.3f}: goods_ocr (capture, recognize, click cheapest)"
                     else:
-                        # Legacy format
-                        ui_call(status_var.set, f"Running legacy format with {len(data)} steps...")
-                        ui_call(append_log_line, f"Running legacy format with {len(data)} steps")
-                        for step in data:
-                            if stop_event.is_set():
-                                raise StopExecution()
-                            run_step(step)
-                        ui_call(status_var.set, "Run complete.")
-                        app_logger.info("Config execution completed successfully")
-                except StopExecution:
-                    ui_call(status_var.set, "Run stopped.")
-                    app_logger.info("Config execution stopped by user")
-                except (OSError, ValueError) as exc:
-                    ui_call(messagebox.showerror, "Error", f"Failed to run config: {exc}")
-                    ui_call(status_var.set, "Idle")
-                    app_logger.error(f"Failed to run config: {exc}", exc_info=True)
-                finally:
-                    ui_call(finalize_run)
+                        line = f"T{event_time:.3f}: {event_type}"
+                    ui_call(append_log_line, line)
+                
+                run_timeline(
+                    data,
+                    stop_check=stop_event.is_set,
+                    event_callback=log_event,
+                )
+            elif isinstance(data, dict) and data.get("type") == "composite":
+                # Nested composite format
+                composite_list = data.get("configs", [])
+                ui_call(append_log_line, f"{indent}Running composite format with {len(composite_list)} nested configs")
+                
+                for sub_idx, item in enumerate(composite_list, 1):
+                    if stop_event.is_set():
+                        raise StopExecution()
+                    
+                    sub_config_path = item.get("config") if isinstance(item, dict) else item
+                    if not sub_config_path:
+                        continue
+                    
+                    ui_call(append_log_line, f"{indent}  [{sub_idx}/{len(composite_list)}] {Path(sub_config_path).name}")
+                    execute_config_recursive(Path(sub_config_path), depth + 1)
+            else:
+                # Legacy format
+                ui_call(append_log_line, f"{indent}Running legacy format with {len(data)} steps")
+                for step in data:
+                    if stop_event.is_set():
+                        raise StopExecution()
+                    run_step(step)
 
-            threading.Thread(target=execute, daemon=True).start()
+        log_text.config(state=tk.NORMAL)
+        log_text.delete("1.0", tk.END)
+        log_text.config(state=tk.DISABLED)
+
+        stop_event.clear()
+        running = True
+        set_controls(recorder.recording, running)
+        status_var.set("Loading config...")
+        app_logger.info(f"Starting to run config: {config_path}")
+        minimize_gui()
+
+        def append_log_line(line: str) -> None:
+            log_text.config(state=tk.NORMAL)
+            log_text.insert(tk.END, f"{line}\n")
+            log_text.see(tk.END)
+            log_text.config(state=tk.DISABLED)
+            app_logger.info(line)
+
+        def finalize_run() -> None:
+            nonlocal running
+            running = False
+            stop_event.clear()
+            set_controls(recorder.recording, running)
+            show_gui()
+
+        def execute() -> None:
+            try:
+                pyautogui.FAILSAFE = True
+                ui_call(status_var.set, "Running config...")
+                execute_config_recursive(config_path)
+                ui_call(status_var.set, "Run complete.")
+                app_logger.info("Config execution completed successfully")
+            except StopExecution:
+                ui_call(status_var.set, "Run stopped.")
+                app_logger.info("Config execution stopped by user")
+            except (OSError, ValueError) as exc:
+                ui_call(messagebox.showerror, "Error", f"Failed to run config: {exc}")
+                ui_call(status_var.set, "Idle")
+                app_logger.error(f"Failed to run config: {exc}", exc_info=True)
+            finally:
+                ui_call(finalize_run)
+
+        threading.Thread(target=execute, daemon=True).start()
 
     def browse_config() -> None:
         path = filedialog.askopenfilename(
@@ -1060,7 +869,14 @@ def start_gui() -> int:
 
     # ===== LEFT COLUMN: Template Selection =====
     template_dir = get_resource_path("templates")
-    available_templates = sorted([f.name for f in template_dir.glob("goods_template_*.png")])
+    group_templates = []
+    if list(template_dir.glob("goods_gudi_*.png")):
+        group_templates.append("gudi")
+    if list(template_dir.glob("goods_wuling_*.png")):
+        group_templates.append("wuling")
+    available_templates = group_templates
+    if not available_templates:
+        available_templates = sorted([f.name for f in template_dir.glob("goods_template_*.png")])
     if available_templates:
         goods_template_var.set(available_templates[0])
     
@@ -1068,9 +884,13 @@ def start_gui() -> int:
     ui_elements['template_frame'] = (template_frame, 'goods_template', False)
     template_frame.grid(row=0, column=0, rowspan=6, sticky="nsew", **padding)
     for template_name in available_templates:
+        if template_name.startswith("goods_template_"):
+            label = template_name.replace("goods_template_", "").replace(".png", "")
+        else:
+            label = template_name
         tk.Radiobutton(
             template_frame,
-            text=template_name.replace("goods_template_", "").replace(".png", ""),
+            text=label,
             variable=goods_template_var,
             value=template_name,
         ).pack(anchor=tk.W)
@@ -1326,7 +1146,11 @@ def start_gui() -> int:
             stop_recording()
 
     def on_goods_capture() -> None:
-        template_path = get_resource_path("templates") / goods_template_var.get()
+        template_value = goods_template_var.get()
+        if template_value in {"gudi", "wuling"}:
+            template_path = template_value
+        else:
+            template_path = get_resource_path("templates") / template_value
         
         if recorder.recording:
             # Add goods_ocr event to timeline with template info
@@ -1343,6 +1167,15 @@ def start_gui() -> int:
                     
                     time.sleep(0.3)
                     result = process_goods_image(save_screenshot=False, template_path=template_path)
+                    app_logger.info(
+                        "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                        result.get("template"),
+                        result.get("region"),
+                        result.get("cols"),
+                        result.get("rows"),
+                    )
+                    for item_line in format_goods_ocr_items(result):
+                        app_logger.info("goods_ocr item: %s", item_line)
                     
                     # Analyze goods data and auto-click the cheapest item
                     analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
@@ -1368,6 +1201,15 @@ def start_gui() -> int:
                 time.sleep(0.8)
                 result = process_goods_image(save_screenshot=False, template_path=template_path)
                 app_logger.info(f"Goods processing result: {json.dumps(result, ensure_ascii=False)}")
+                app_logger.info(
+                    "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                    result.get("template"),
+                    result.get("region"),
+                    result.get("cols"),
+                    result.get("rows"),
+                )
+                for item_line in format_goods_ocr_items(result):
+                    app_logger.info("goods_ocr item: %s", item_line)
                 
                 # Analyze goods data and auto-click the cheapest item
                 analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))

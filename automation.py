@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 import time
 from pathlib import Path
@@ -456,17 +457,33 @@ def run_timeline(
                     print(f"Error executing config_action: {e}")
         elif event_type == "goods_ocr":
             # Process goods image and auto-click the cheapest item
-            from goods_processor import process_goods_image, analyze_goods_data
+            from goods_processor import (
+                process_goods_image,
+                analyze_goods_data,
+                format_goods_ocr_items,
+            )
             
             try:
                 # Prioritize event-level template over global template
                 template_path = None
                 event_template = event.get("template")
-                if event_template:
-                    template_path = Path("templates") / event_template
-                elif goods_template:
-                    template_path = Path("templates") / goods_template
+                template_key = event_template or goods_template
+                if template_key:
+                    if template_key in {"gudi", "wuling"}:
+                        template_path = template_key
+                    else:
+                        template_path = Path("templates") / template_key
                 result = process_goods_image(save_screenshot=False, template_path=template_path)
+                logger = logging.getLogger("app")
+                logger.info(
+                    "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                    result.get("template"),
+                    result.get("region"),
+                    result.get("cols"),
+                    result.get("rows"),
+                )
+                for item_line in format_goods_ocr_items(result):
+                    logger.info("goods_ocr item: %s", item_line)
                 analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
                 if analysis:
                     time.sleep(0.3)
@@ -628,9 +645,23 @@ def run_step(
         if dry_run:
             print(f"DRY: goods OCR capture and recognize")
         else:
-            from goods_processor import process_goods_image, analyze_goods_data
+            from goods_processor import (
+                process_goods_image,
+                analyze_goods_data,
+                format_goods_ocr_items,
+            )
 
             result = process_goods_image(save_screenshot=False)
+            logger = logging.getLogger("app")
+            logger.info(
+                "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                result.get("template"),
+                result.get("region"),
+                result.get("cols"),
+                result.get("rows"),
+            )
+            for item_line in format_goods_ocr_items(result):
+                logger.info("goods_ocr item: %s", item_line)
             
             # Analyze and perform action based on result
             analysis = analyze_goods_data(result)
