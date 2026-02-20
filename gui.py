@@ -253,6 +253,12 @@ def start_gui() -> int:
                 widget.config(text=text)
         if config_menu is not None:
             config_menu.entryconfig(0, label=i18n.t("open_in_editor"))
+            # Update other menu items (keeping English for now as they're standard commands)
+            config_menu.entryconfig(2, label="Cut" if i18n.get_language() == "en" else "剪切")
+            config_menu.entryconfig(3, label="Copy" if i18n.get_language() == "en" else "复制")
+            config_menu.entryconfig(4, label="Paste" if i18n.get_language() == "en" else "粘贴")
+            config_menu.entryconfig(6, label="New Folder" if i18n.get_language() == "en" else "新建文件夹")
+            config_menu.entryconfig(8, label="Delete" if i18n.get_language() == "en" else "删除")
     
     def toggle_language() -> None:
         """Toggle between English and Chinese"""
@@ -700,23 +706,43 @@ def start_gui() -> int:
             refresh_edit_view()
     
     def load_config_folder_by_path(folder_path: Path) -> None:
-        """Load config files from a specified folder path."""
-        nonlocal config_folder, config_files
+        """Load config files from a specified folder path recursively into tree."""
+        nonlocal config_folder
         if not folder_path.exists() or not folder_path.is_dir():
             return
         
         config_folder = folder_path
-        # Load all .json files from the folder
-        config_files = sorted([f.name for f in config_folder.glob("*.json")])
-        # Add comment field to all configs
-        for config_file in config_files:
-            add_comment_field_to_config(config_folder / config_file)
-        # Update the listbox
-        config_listbox.delete(0, tk.END)
-        for config_file in config_files:
-            config_listbox.insert(tk.END, config_file)
-        status_var.set(f"Loaded {len(config_files)} config(s) from folder")
-        app_logger.info(f"Loaded {len(config_files)} config files from folder: {folder_path}")
+        # Clear the tree
+        for item in config_tree.get_children():
+            config_tree.delete(item)
+        
+        # Recursively load folder structure
+        def add_folder_to_tree(parent_id: str, folder: Path) -> None:
+            try:
+                items = sorted(folder.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+                for item in items:
+                    if item.is_dir():
+                        # Add folder
+                        folder_id = config_tree.insert(parent_id, 'end', text=item.name, 
+                                                      values=(str(item), 'folder'), 
+                                                      tags=('folder',))
+                        # Recursively add contents
+                        add_folder_to_tree(folder_id, item)
+                    elif item.suffix == '.json':
+                        # Add JSON file
+                        add_comment_field_to_config(item)
+                        config_tree.insert(parent_id, 'end', text=item.name, 
+                                         values=(str(item), 'file'),
+                                         tags=('file',))
+            except PermissionError:
+                pass
+        
+        add_folder_to_tree('', folder_path)
+        
+        # Count files
+        file_count = sum(1 for _ in folder_path.rglob('*.json'))
+        status_var.set(f"Loaded {file_count} config(s) from folder")
+        app_logger.info(f"Loaded config files from folder: {folder_path}")
     
     def browse_folder() -> None:
         """Browse and select a folder containing config files."""
@@ -734,58 +760,240 @@ def start_gui() -> int:
             return ""
 
     def on_config_select(event) -> None:
-        """Handle config selection from listbox."""
-        selection = config_listbox.curselection()
+        """Handle config selection from tree."""
+        selection = config_tree.selection()
         if selection and config_folder:
-            # Save current comment before switching
-            save_current_comment()
+            item_id = selection[0]
+            item_values = config_tree.item(item_id, 'values')
             
-            selected_file = config_listbox.get(selection[0])
-            config_path = config_folder / selected_file
-            config_var.set(str(config_path))
-            # Load and display config comment
-            comment = load_config_comment(config_path)
-            update_comment_text_from_var(comment)
-            config_comment_var.set(comment)
-            app_logger.info(f"Config selected from list: {config_path}")
-            
-            # Refresh edit view to show the selected config
-            refresh_edit_view()
+            if len(item_values) >= 2 and item_values[1] == 'file':
+                # Save current comment before switching
+                save_current_comment()
+                
+                config_path = Path(item_values[0])
+                config_var.set(str(config_path))
+                # Load and display config comment
+                comment = load_config_comment(config_path)
+                update_comment_text_from_var(comment)
+                config_comment_var.set(comment)
+                app_logger.info(f"Config selected from list: {config_path}")
+                
+                # Refresh edit view to show the selected config
+                refresh_edit_view()
     
     def on_config_double_click(event) -> None:
-        """Handle double-click on config list to add to composite."""
-        selection = config_listbox.curselection()
-        if selection and config_folder:
-            selected_file = config_listbox.get(selection[0])
-            config_path = config_folder / selected_file
-            add_to_composite(str(config_path))
-            status_var.set(f"Added {selected_file} to composite list")
+        """Handle double-click on config tree: toggle folder or add file to composite."""
+        selection = config_tree.selection()
+        if not selection:
+            return
+        
+        item_id = selection[0]
+        item_values = config_tree.item(item_id, 'values')
+        
+        if len(item_values) >= 2:
+            if item_values[1] == 'folder':
+                # Toggle folder open/close
+                if config_tree.item(item_id, 'open'):
+                    config_tree.item(item_id, open=False)
+                else:
+                    config_tree.item(item_id, open=True)
+            elif item_values[1] == 'file':
+                # Add to composite
+                config_path = Path(item_values[0])
+                add_to_composite(str(config_path))
+                status_var.set(f"Added {config_path.name} to composite list")
 
     def open_selected_config_in_editor() -> None:
         """Open the selected config in the system default editor."""
-        selection = config_listbox.curselection()
-        if not selection or not config_folder:
+        selection = config_tree.selection()
+        if not selection:
             messagebox.showinfo(i18n.t("error"), i18n.t("config_not_chosen"))
             return
-        selected_file = config_listbox.get(selection[0])
-        config_path = config_folder / selected_file
-        if not config_path.exists():
-            messagebox.showerror(i18n.t("error"), i18n.t("config_not_found"))
-            return
-        try:
-            os.startfile(str(config_path))
-        except OSError as exc:
-            messagebox.showerror(i18n.t("error"), i18n.t("error_open_editor", error=str(exc)))
+        
+        item_id = selection[0]
+        item_values = config_tree.item(item_id, 'values')
+        
+        if len(item_values) >= 2 and item_values[1] == 'file':
+            config_path = Path(item_values[0])
+            if not config_path.exists():
+                messagebox.showerror(i18n.t("error"), i18n.t("config_not_found"))
+                return
+            try:
+                os.startfile(str(config_path))
+            except OSError as exc:
+                messagebox.showerror(i18n.t("error"), i18n.t("error_open_editor", error=str(exc)))
+        elif len(item_values) >= 2 and item_values[1] == 'folder':
+            # Open folder in explorer
+            folder_path = Path(item_values[0])
+            try:
+                os.startfile(str(folder_path))
+            except OSError as exc:
+                messagebox.showerror(i18n.t("error"), str(exc))
 
-    def on_config_right_click(event) -> None:
-        """Show context menu for config list."""
-        if config_listbox.size() == 0:
+    # Clipboard for cut/copy operations
+    clipboard_item = {'path': None, 'operation': None}  # operation: 'cut' or 'copy'
+    
+    def delete_selected_config() -> None:
+        """Delete selected file or folder."""
+        selection = config_tree.selection()
+        if not selection:
             return
-        index = config_listbox.nearest(event.y)
-        if index >= 0:
-            config_listbox.selection_clear(0, tk.END)
-            config_listbox.selection_set(index)
-            config_listbox.activate(index)
+        
+        item_id = selection[0]
+        item_values = config_tree.item(item_id, 'values')
+        
+        if len(item_values) >= 2:
+            path = Path(item_values[0])
+            item_type = item_values[1]
+            
+            # Confirm deletion
+            msg = f"Delete {item_type} '{path.name}'?"
+            if item_type == 'folder':
+                msg += "\n\nThis will delete the folder and all its contents!"
+            
+            if messagebox.askyesno("Confirm Delete", msg):
+                try:
+                    if item_type == 'folder':
+                        import shutil
+                        shutil.rmtree(path)
+                    else:
+                        path.unlink()
+                    
+                    # Remove from tree
+                    config_tree.delete(item_id)
+                    status_var.set(f"Deleted {path.name}")
+                    app_logger.info(f"Deleted: {path}")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to delete: {e}")
+                    app_logger.error(f"Failed to delete {path}: {e}")
+    
+    def cut_selected_config() -> None:
+        """Cut selected file or folder."""
+        selection = config_tree.selection()
+        if not selection:
+            return
+        
+        item_id = selection[0]
+        item_values = config_tree.item(item_id, 'values')
+        
+        if len(item_values) >= 2:
+            clipboard_item['path'] = Path(item_values[0])
+            clipboard_item['operation'] = 'cut'
+            status_var.set(f"Cut: {clipboard_item['path'].name}")
+    
+    def copy_selected_config() -> None:
+        """Copy selected file or folder."""
+        selection = config_tree.selection()
+        if not selection:
+            return
+        
+        item_id = selection[0]
+        item_values = config_tree.item(item_id, 'values')
+        
+        if len(item_values) >= 2:
+            clipboard_item['path'] = Path(item_values[0])
+            clipboard_item['operation'] = 'copy'
+            status_var.set(f"Copied: {clipboard_item['path'].name}")
+    
+    def paste_config() -> None:
+        """Paste cut/copied file or folder."""
+        if not clipboard_item['path'] or not clipboard_item['operation']:
+            return
+        
+        selection = config_tree.selection()
+        target_folder = config_folder
+        
+        # Determine target folder
+        if selection:
+            item_id = selection[0]
+            item_values = config_tree.item(item_id, 'values')
+            if len(item_values) >= 2:
+                path = Path(item_values[0])
+                if item_values[1] == 'folder':
+                    target_folder = path
+                else:
+                    target_folder = path.parent
+        
+        source = clipboard_item['path']
+        dest = target_folder / source.name
+        
+        # Handle name conflict
+        if dest.exists():
+            base_name = source.stem
+            ext = source.suffix
+            counter = 1
+            while dest.exists():
+                if source.is_dir():
+                    dest = target_folder / f"{source.name}_{counter}"
+                else:
+                    dest = target_folder / f"{base_name}_{counter}{ext}"
+                counter += 1
+        
+        try:
+            import shutil
+            if clipboard_item['operation'] == 'cut':
+                shutil.move(str(source), str(dest))
+                status_var.set(f"Moved to {target_folder.name}")
+            else:  # copy
+                if source.is_dir():
+                    shutil.copytree(str(source), str(dest))
+                else:
+                    shutil.copy2(str(source), str(dest))
+                status_var.set(f"Copied to {target_folder.name}")
+            
+            # Refresh the tree
+            load_config_folder_by_path(config_folder)
+            
+            # Clear clipboard after cut
+            if clipboard_item['operation'] == 'cut':
+                clipboard_item['path'] = None
+                clipboard_item['operation'] = None
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to paste: {e}")
+            app_logger.error(f"Failed to paste: {e}")
+    
+    def create_new_folder() -> None:
+        """Create a new folder."""
+        selection = config_tree.selection()
+        target_folder = config_folder
+        
+        # Determine target folder
+        if selection:
+            item_id = selection[0]
+            item_values = config_tree.item(item_id, 'values')
+            if len(item_values) >= 2:
+                path = Path(item_values[0])
+                if item_values[1] == 'folder':
+                    target_folder = path
+                else:
+                    target_folder = path.parent
+        
+        # Prompt for folder name
+        from tkinter import simpledialog
+        folder_name = simpledialog.askstring("New Folder", "Enter folder name:", parent=root)
+        
+        if folder_name:
+            new_folder = target_folder / folder_name
+            try:
+                new_folder.mkdir(parents=True, exist_ok=False)
+                # Refresh the tree
+                load_config_folder_by_path(config_folder)
+                status_var.set(f"Created folder: {folder_name}")
+                app_logger.info(f"Created folder: {new_folder}")
+            except FileExistsError:
+                messagebox.showerror("Error", "Folder already exists")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to create folder: {e}")
+                app_logger.error(f"Failed to create folder: {e}")
+    
+    def on_config_right_click(event) -> None:
+        """Show context menu for config tree."""
+        # Select item under cursor
+        item_id = config_tree.identify_row(event.y)
+        if item_id:
+            config_tree.selection_set(item_id)
+        
         if config_menu is not None:
             config_menu.tk_popup(event.x_root, event.y_root)
             config_menu.grab_release()
@@ -1804,20 +2012,37 @@ def start_gui() -> int:
     config_list_frame.grid(row=1, column=2, rowspan=5, sticky="nsew", **padding)
     config_list_scrollbar = tk.Scrollbar(config_list_frame, orient=tk.VERTICAL)
     config_list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    config_listbox = tk.Listbox(
+    
+    # Use Treeview for hierarchical folder structure
+    config_tree = ttk.Treeview(
         config_list_frame,
-        width=25,
-        height=20,
         yscrollcommand=config_list_scrollbar.set,
+        selectmode='browse',
+        columns=('path', 'type'),
+        displaycolumns=()  # Hide value columns
     )
-    config_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-    config_list_scrollbar.config(command=config_listbox.yview)
-    config_listbox.bind("<<ListboxSelect>>", on_config_select)
-    config_listbox.bind("<Double-Button-1>", on_config_double_click)
-    config_listbox.bind("<Button-3>", on_config_right_click)
+    config_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    config_list_scrollbar.config(command=config_tree.yview)
+    
+    # Configure tree tags
+    config_tree.tag_configure('folder', foreground='#0066cc')
+    config_tree.tag_configure('file', foreground='black')
+    
+    config_tree.bind("<<TreeviewSelect>>", on_config_select)
+    config_tree.bind("<Double-Button-1>", on_config_double_click)
+    config_tree.bind("<Button-3>", on_config_right_click)
 
+    # Enhanced context menu with more operations
     config_menu = tk.Menu(root, tearoff=0)
     config_menu.add_command(label=i18n.t("open_in_editor"), command=open_selected_config_in_editor)
+    config_menu.add_separator()
+    config_menu.add_command(label="Cut", command=cut_selected_config)
+    config_menu.add_command(label="Copy", command=copy_selected_config)
+    config_menu.add_command(label="Paste", command=paste_config)
+    config_menu.add_separator()
+    config_menu.add_command(label="New Folder", command=create_new_folder)
+    config_menu.add_separator()
+    config_menu.add_command(label="Delete", command=delete_selected_config)
 
     # Bind events to composite listbox
     composite_listbox.bind("<Double-Button-1>", on_composite_double_click)
@@ -2043,7 +2268,7 @@ def start_gui() -> int:
         threading.Thread(target=process, daemon=True).start()
 
     def on_qingbao_hotkey() -> None:
-        config_path = get_resource_path("configs/情报循环.json")
+        config_path = get_resource_path("configs//情报交流//情报循环.json")
         if not config_path.exists():
             app_logger.error(f"Qingbao loop config not found: {config_path}")
             ui_call(messagebox.showerror, "Error", f"Config not found: {config_path}")
@@ -2054,8 +2279,8 @@ def start_gui() -> int:
             from qingbao_processor import run_qingbao_loop
 
             params = {
-                "config_found": "configs/情报访问.json",
-                "config_not_found": "configs/好友列表下滑.json",
+                "config_found": "configs/情报交流/情报访问.json",
+                "config_not_found": "configs/好友/好友列表下滑.json",
                 "max_clicks": 5,
                 "max_recognitions": 20,
                 "match_threshold": 0.7,

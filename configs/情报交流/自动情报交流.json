@@ -3,8 +3,8 @@
     {
       "time": 2.64,
       "type": "qingbao_loop",
-      "config_found": "configs/情报访问.json",
-      "config_not_found": "configs/好友列表下滑.json",
+      "config_found": "configs/情报交流/情报访问.json",
+      "config_not_found": "configs/好友/好友列表下滑.json",
       "max_clicks": 5,
       "max_recognitions": 20,
       "match_threshold": 0.7

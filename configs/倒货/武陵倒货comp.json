@@ -1,0 +1,18 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货进货.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货访问卖家.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵走到物资终端.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵批量卖货.json"
+    }
+  ],
+  "comment": ""
+}

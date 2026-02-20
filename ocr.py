@@ -80,6 +80,7 @@ def find_template_sift(
     template_path: Path | str,
     min_matches: int = 4,
     screen_gray: np.ndarray | None = None,
+    ratio_threshold: float = 0.7,
 ) -> dict | None:
     """
     Find a template in the screen image using SIFT feature matching.
@@ -89,6 +90,7 @@ def find_template_sift(
         template_path: Path to template image
         min_matches: Minimum number of good feature matches required
         screen_gray: Optional pre-computed grayscale screen image
+        ratio_threshold: Lowe's ratio test threshold (default 0.7, higher = more lenient)
     
     Returns:
         Dict with:
@@ -143,7 +145,7 @@ def find_template_sift(
     for match_pair in matches:
         if len(match_pair) == 2:
             m, n = match_pair
-            if m.distance < 0.7 * n.distance:
+            if m.distance < ratio_threshold * n.distance:
                 good_matches.append(m)
     
     if len(good_matches) < min_matches:

@@ -1,0 +1,15 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\好友\\进入好友界面.json"
+    },
+    {
+      "config": "configs\\情报交流\\自动情报交流.json"
+    },
+    {
+      "config": "configs\\好友\\退出好友界面.json"
+    }
+  ],
+  "comment": ""
+}

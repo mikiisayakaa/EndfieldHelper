@@ -1,0 +1,39 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\基建收菜\\谷地基建.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\基建收菜\\武陵基建.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\谷地倒货comp.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货comp.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\个人好友助力.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\基建快递\\谷地派单.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\基建快递\\武陵派单.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\基建快递\\收单.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\环境监测\\武陵环境检测接任务.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\情报交流\\情报交流comp.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\舰船收菜简化版.json"
+    }
+  ],
+  "comment": ""
+}

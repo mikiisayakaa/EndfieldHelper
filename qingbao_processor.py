@@ -28,7 +28,7 @@ def find_qingbao_target(
     match_threshold: float = 0.7,
 ) -> dict | None:
     """
-    Find qingbao target in screenshot using SIFT feature matching.
+    Find qingbao target in screenshot using SIFT feature matching with fallback.
     
     Args:
         screenshot: Full screen PIL Image
@@ -45,11 +45,30 @@ def find_qingbao_target(
     if invalid_bgr is None:
         return None
 
-    # Use unified SIFT function to find template in ROI
-    result = find_template_sift(roi_bgr, QINGBAO_TEMPLATE, min_matches=4)
+    # Try SIFT with lower min_matches and more lenient ratio for small templates (情报图标较小)
+    result = find_template_sift(roi_bgr, QINGBAO_TEMPLATE, min_matches=2, ratio_threshold=0.75)
     
+    # Fallback to traditional template matching if SIFT fails
     if result is None:
-        return None
+        from ocr import match_template
+        valid_bgr = load_template_bgr(QINGBAO_TEMPLATE)
+        if valid_bgr is None:
+            return None
+        
+        confidence, (x, y) = match_template(roi_bgr, valid_bgr)
+        
+        if confidence < match_threshold:
+            return None
+        
+        # Construct result similar to SIFT output
+        h, w = valid_bgr.shape[:2]
+        result = {
+            "center_x": x + w // 2,
+            "center_y": y + h // 2,
+            "confidence": confidence,
+            "bbox": [x, y, x + w, y + h],
+        }
+        print(f"Template matching fallback: confidence={confidence:.2%}")
 
     # Extract candidate region and compare with valid/invalid templates
     x1, y1, x2, y2 = result["bbox"]

@@ -1,0 +1,12 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\测试\\情报交流comp.json"
+    },
+    {
+      "config": "configs\\测试\\舰船收菜简化版.json"
+    }
+  ],
+  "comment": ""
+}
