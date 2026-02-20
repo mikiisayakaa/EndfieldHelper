@@ -1,0 +1,15 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:/Projects/endfieldhelper/configs/test1.json"
+    },
+    {
+      "config": "configs\\test.json"
+    },
+    {
+      "config": "configs\\test1.json"
+    }
+  ],
+  "comment": ""
+}

@@ -1,0 +1,98 @@
+{
+  "timeline": [
+    {
+      "time": 1.516,
+      "type": "drag",
+      "start_x": 1575,
+      "start_y": 903,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.07800000003771856
+    },
+    {
+      "time": 2.36,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 2.438,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 3.844,
+      "type": "click",
+      "x": 157,
+      "y": 575,
+      "button": "left"
+    },
+    {
+      "time": 4.891,
+      "type": "click",
+      "x": 1137,
+      "y": 389,
+      "button": "left"
+    },
+    {
+      "time": 5.86,
+      "type": "click",
+      "x": 1517,
+      "y": 970,
+      "button": "left"
+    },
+    {
+      "time": 7.047,
+      "type": "click",
+      "x": 2283,
+      "y": 797,
+      "button": "left"
+    },
+    {
+      "time": 8.438,
+      "type": "click",
+      "x": 1153,
+      "y": 149,
+      "button": "left"
+    },
+    {
+      "time": 10.75,
+      "type": "click",
+      "x": 2366,
+      "y": 1496,
+      "button": "left"
+    },
+    {
+      "time": 12.156,
+      "type": "click",
+      "x": 1925,
+      "y": 1105,
+      "button": "left"
+    },
+    {
+      "time": 13.531,
+      "type": "click",
+      "x": 2452,
+      "y": 72,
+      "button": "left"
+    },
+    {
+      "time": 14.281,
+      "type": "click",
+      "x": 2452,
+      "y": 72,
+      "button": "left"
+    },
+    {
+      "time": 15.61,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 15.719,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**自动收获派发的快递单**\n\n!!起始状态：3DUI!!\n\n结束状态：3DUI"
+}

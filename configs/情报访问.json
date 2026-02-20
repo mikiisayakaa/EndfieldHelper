@@ -1,0 +1,94 @@
+{
+  "timeline": [
+    {
+      "time": 0.672,
+      "type": "click",
+      "x": 1272,
+      "y": 886,
+      "button": "left"
+    },
+    {
+      "time": 1.969,
+      "type": "click",
+      "x": 1519,
+      "y": 1007,
+      "button": "left"
+    },
+    {
+      "time": 6.781,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 6.859,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 8.64,
+      "type": "click",
+      "x": 1190,
+      "y": 1269,
+      "button": "left"
+    },
+    {
+      "time": 9.953,
+      "type": "click",
+      "x": 2444,
+      "y": 63,
+      "button": "left"
+    },
+    {
+      "time": 11.031,
+      "type": "key_press",
+      "key": "esc"
+    },
+    {
+      "time": 11.203,
+      "type": "key_release",
+      "key": "esc"
+    },
+    {
+      "time": 13.25,
+      "type": "click",
+      "x": 2223,
+      "y": 1469,
+      "button": "left"
+    },
+    {
+      "time": 14.609,
+      "type": "click",
+      "x": 1556,
+      "y": 1010,
+      "button": "left"
+    },
+    {
+      "time": 19.75,
+      "type": "key_press",
+      "key": "esc"
+    },
+    {
+      "time": 19.875,
+      "type": "key_release",
+      "key": "esc"
+    },
+    {
+      "time": 21.469,
+      "type": "click",
+      "x": 2400,
+      "y": 628,
+      "button": "left"
+    },
+    {
+      "time": 23.687,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 23.89,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": ""
+}

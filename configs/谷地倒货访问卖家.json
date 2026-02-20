@@ -1,0 +1,99 @@
+{
+  "timeline": [
+    {
+      "time": 0.719,
+      "type": "drag",
+      "start_x": 845,
+      "start_y": 636,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.0940000000409782
+    },
+    {
+      "time": 1.437,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 1.562,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 3.14,
+      "type": "click",
+      "x": 298,
+      "y": 603,
+      "button": "left"
+    },
+    {
+      "time": 4.156,
+      "type": "click",
+      "x": 1105,
+      "y": 381,
+      "button": "left"
+    },
+    {
+      "time": 4.937,
+      "type": "click",
+      "x": 1467,
+      "y": 964,
+      "button": "left"
+    },
+    {
+      "time": 6.281,
+      "type": "click",
+      "x": 1707,
+      "y": 766,
+      "button": "left"
+    },
+    {
+      "time": 8.531,
+      "type": "click",
+      "x": 886,
+      "y": 172,
+      "button": "left"
+    },
+    {
+      "time": 9.719,
+      "type": "click",
+      "x": 303,
+      "y": 603,
+      "button": "left"
+    },
+    {
+      "time": 11.094,
+      "type": "click",
+      "x": 1979,
+      "y": 1000,
+      "button": "left"
+    },
+    {
+      "time": 13.656,
+      "type": "hold",
+      "x": 988,
+      "y": 692,
+      "button": "left",
+      "duration": 0.7660000000614673
+    },
+    {
+      "time": 15.281,
+      "type": "click",
+      "x": 1156,
+      "y": 765,
+      "button": "left"
+    },
+    {
+      "time": 20.64,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 21.078,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**购买货物后访问最高售价卖家（子操作）**\n\n!!起始状态：3DUI，必须持有弹性需求物资!!\n\n结束状态：卖家船上会客室3DUI"
+}

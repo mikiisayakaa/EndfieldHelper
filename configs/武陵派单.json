@@ -1,0 +1,136 @@
+{
+  "timeline": [
+    {
+      "time": 1.39,
+      "type": "drag",
+      "start_x": 878,
+      "start_y": 642,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.10899999993853271
+    },
+    {
+      "time": 2.219,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 2.312,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 3.578,
+      "type": "click",
+      "x": 254,
+      "y": 606,
+      "button": "left"
+    },
+    {
+      "time": 4.359,
+      "type": "click",
+      "x": 1446,
+      "y": 355,
+      "button": "left"
+    },
+    {
+      "time": 5.031,
+      "type": "click",
+      "x": 1575,
+      "y": 968,
+      "button": "left"
+    },
+    {
+      "time": 6.328,
+      "type": "click",
+      "x": 2253,
+      "y": 776,
+      "button": "left"
+    },
+    {
+      "time": 8.015,
+      "type": "click",
+      "x": 579,
+      "y": 952,
+      "button": "left"
+    },
+    {
+      "time": 9.203,
+      "type": "click",
+      "x": 2324,
+      "y": 1468,
+      "button": "left"
+    },
+    {
+      "time": 10.719,
+      "type": "click",
+      "x": 2303,
+      "y": 363,
+      "button": "left"
+    },
+    {
+      "time": 11.797,
+      "type": "click",
+      "x": 2295,
+      "y": 1476,
+      "button": "left"
+    },
+    {
+      "time": 13.187,
+      "type": "click",
+      "x": 2290,
+      "y": 1463,
+      "button": "left"
+    },
+    {
+      "time": 14.562,
+      "type": "click",
+      "x": 2300,
+      "y": 1504,
+      "button": "left"
+    },
+    {
+      "time": 16.0,
+      "type": "click",
+      "x": 2321,
+      "y": 1271,
+      "button": "left"
+    },
+    {
+      "time": 18.156,
+      "type": "key_press",
+      "key": "j"
+    },
+    {
+      "time": 18.281,
+      "type": "key_release",
+      "key": "j"
+    },
+    {
+      "time": 20.0,
+      "type": "click",
+      "x": 994,
+      "y": 1494,
+      "button": "left"
+    },
+    {
+      "time": 20.922,
+      "type": "click",
+      "x": 1463,
+      "y": 1019,
+      "button": "left"
+    },
+    {
+      "time": 23.515,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 23.672,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**武陵快递派单**\n\n!!起始状态：3DUI!!\n\n结束状态：3DUI"
+}

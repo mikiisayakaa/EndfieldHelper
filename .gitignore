@@ -26,13 +26,6 @@ env/
 *.log
 endfield_helper.log
 
-# Data files
-*.json
-!requirements.txt
-!config.json
-!multiconfig.json
-!empty.txt
-!goods_ocr_results.json
 
 # Temporary files
 *.tmp

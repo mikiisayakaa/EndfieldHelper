@@ -1,0 +1,11 @@
+[
+  {
+    "name": "qingbao_loop",
+    "action": "qingbao_loop",
+    "config_found": "configs/情报访问.json",
+    "config_not_found": "configs/好友列表下滑.json",
+    "max_clicks": 5,
+    "max_recognitions": 20,
+    "match_threshold": 0.7
+  }
+]

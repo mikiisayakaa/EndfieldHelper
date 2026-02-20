@@ -1,0 +1,84 @@
+{
+  "timeline": [
+    {
+      "time": 0.547,
+      "type": "drag",
+      "start_x": 1112,
+      "start_y": 680,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.10900000005494803
+    },
+    {
+      "time": 1.469,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 1.532,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 2.719,
+      "type": "click",
+      "x": 195,
+      "y": 581,
+      "button": "left"
+    },
+    {
+      "time": 3.391,
+      "type": "click",
+      "x": 1464,
+      "y": 363,
+      "button": "left"
+    },
+    {
+      "time": 4.203,
+      "type": "click",
+      "x": 1502,
+      "y": 933,
+      "button": "left"
+    },
+    {
+      "time": 5.578,
+      "type": "click",
+      "x": 1723,
+      "y": 942,
+      "button": "left"
+    },
+    {
+      "time": 6.782,
+      "type": "click",
+      "x": 696,
+      "y": 1369,
+      "button": "left"
+    },
+    {
+      "time": 9.188,
+      "type": "click",
+      "x": 2473,
+      "y": 54,
+      "button": "left"
+    },
+    {
+      "time": 10.094,
+      "type": "click",
+      "x": 2473,
+      "y": 54,
+      "button": "left"
+    },
+    {
+      "time": 11.282,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 11.407,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**接取武陵拍照任务（不会做，只接取）**\n\n!!起始状态：3DUI!!\n\n结束状态：3DUI"
+}

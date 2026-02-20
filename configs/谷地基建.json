@@ -1,0 +1,170 @@
+{
+  "timeline": [
+    {
+      "time": 1.031,
+      "type": "drag",
+      "start_x": 1595,
+      "start_y": 881,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.0779999999795109
+    },
+    {
+      "time": 1.938,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 2.031,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 4.047,
+      "type": "click",
+      "x": 154,
+      "y": 588,
+      "button": "left"
+    },
+    {
+      "time": 5.203,
+      "type": "click",
+      "x": 1124,
+      "y": 383,
+      "button": "left"
+    },
+    {
+      "time": 6.11,
+      "type": "click",
+      "x": 1537,
+      "y": 963,
+      "button": "left"
+    },
+    {
+      "time": 7.219,
+      "type": "click",
+      "x": 1804,
+      "y": 500,
+      "button": "left"
+    },
+    {
+      "time": 9.485,
+      "type": "drag",
+      "start_x": 2049,
+      "start_y": 1158,
+      "end_x": 2556,
+      "end_y": 1135,
+      "button": "left",
+      "duration": 0.34399999998277053
+    },
+    {
+      "time": 10.188,
+      "type": "click",
+      "x": 2383,
+      "y": 1465,
+      "button": "left"
+    },
+    {
+      "time": 11.985,
+      "type": "click",
+      "x": 1577,
+      "y": 630,
+      "button": "left"
+    },
+    {
+      "time": 12.781,
+      "type": "click",
+      "x": 1206,
+      "y": 207,
+      "button": "left"
+    },
+    {
+      "time": 14.063,
+      "type": "drag",
+      "start_x": 2047,
+      "start_y": 1153,
+      "end_x": 2554,
+      "end_y": 1133,
+      "button": "left",
+      "duration": 0.26600000000325963
+    },
+    {
+      "time": 14.688,
+      "type": "click",
+      "x": 2395,
+      "y": 1471,
+      "button": "left"
+    },
+    {
+      "time": 16.031,
+      "type": "click",
+      "x": 1915,
+      "y": 1178,
+      "button": "left"
+    },
+    {
+      "time": 16.625,
+      "type": "click",
+      "x": 1915,
+      "y": 1178,
+      "button": "left"
+    },
+    {
+      "time": 17.563,
+      "type": "click",
+      "x": 1677,
+      "y": 179,
+      "button": "left"
+    },
+    {
+      "time": 18.719,
+      "type": "drag",
+      "start_x": 2055,
+      "start_y": 1147,
+      "end_x": 2534,
+      "end_y": 1177,
+      "button": "left",
+      "duration": 0.25
+    },
+    {
+      "time": 19.36,
+      "type": "click",
+      "x": 2368,
+      "y": 1468,
+      "button": "left"
+    },
+    {
+      "time": 21.203,
+      "type": "click",
+      "x": 1850,
+      "y": 1188,
+      "button": "left"
+    },
+    {
+      "time": 22.36,
+      "type": "click",
+      "x": 2448,
+      "y": 40,
+      "button": "left"
+    },
+    {
+      "time": 23.313,
+      "type": "click",
+      "x": 2468,
+      "y": 71,
+      "button": "left"
+    },
+    {
+      "time": 24.297,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 24.406,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**谷地基建自动收菜**\n\n!!起始状态：3DUI，谷地三个分基地已开，售卖资源已设置!!\n\n结束状态：3DUI"
+}

@@ -1,0 +1,18 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\谷地倒货进货.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\谷地倒货访问卖家.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\走到物资终端.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\谷地批量卖货.json"
+    }
+  ],
+  "comment": ""
+}

@@ -1,0 +1,101 @@
+{
+  "timeline": [
+    {
+      "time": 0.703,
+      "type": "drag",
+      "start_x": 1499,
+      "start_y": 588,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.09299999999348074
+    },
+    {
+      "time": 1.547,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 1.61,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 3.125,
+      "type": "click",
+      "x": 108,
+      "y": 583,
+      "button": "left"
+    },
+    {
+      "time": 3.985,
+      "type": "click",
+      "x": 1471,
+      "y": 373,
+      "button": "left"
+    },
+    {
+      "time": 4.75,
+      "type": "click",
+      "x": 1542,
+      "y": 929,
+      "button": "left"
+    },
+    {
+      "time": 6.125,
+      "type": "click",
+      "x": 1846,
+      "y": 439,
+      "button": "left"
+    },
+    {
+      "time": 7.985,
+      "type": "drag",
+      "start_x": 2048,
+      "start_y": 1160,
+      "end_x": 2552,
+      "end_y": 1177,
+      "button": "left",
+      "duration": 0.3279999999795109
+    },
+    {
+      "time": 8.641,
+      "type": "click",
+      "x": 2352,
+      "y": 1500,
+      "button": "left"
+    },
+    {
+      "time": 10.469,
+      "type": "click",
+      "x": 2011,
+      "y": 1357,
+      "button": "left"
+    },
+    {
+      "time": 11.547,
+      "type": "click",
+      "x": 2479,
+      "y": 66,
+      "button": "left"
+    },
+    {
+      "time": 12.282,
+      "type": "click",
+      "x": 2477,
+      "y": 67,
+      "button": "left"
+    },
+    {
+      "time": 13.532,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 13.688,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**武陵基建自动收菜**\n\n!!起始状态：3DUI，武陵分基地已开，售卖资源已设置!!\n\n结束状态：3DUI"
+}

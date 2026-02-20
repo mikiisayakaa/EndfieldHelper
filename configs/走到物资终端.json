@@ -1,0 +1,305 @@
+{
+  "timeline": [
+    {
+      "time": 0.781,
+      "type": "drag",
+      "start_x": 318,
+      "start_y": 853,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.10899999993853271
+    },
+    {
+      "time": 1.938,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.438,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.469,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.5,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.531,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.563,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.594,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.625,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.656,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.688,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.703,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.734,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.766,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.797,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.828,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.859,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.891,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.922,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.953,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 2.984,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.016,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.047,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.078,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.109,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.141,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.156,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.188,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.219,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.25,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.281,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.313,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.344,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.375,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.406,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.438,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.469,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.5,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.531,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.563,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.578,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.609,
+      "type": "key_press",
+      "key": "left"
+    },
+    {
+      "time": 3.625,
+      "type": "key_release",
+      "key": "left"
+    },
+    {
+      "time": 3.625,
+      "type": "key_release",
+      "key": "left"
+    },
+    {
+      "time": 5.016,
+      "type": "key_press",
+      "key": "w"
+    },
+    {
+      "time": 5.094,
+      "type": "key_release",
+      "key": "w"
+    },
+    {
+      "time": 6.359,
+      "type": "key_press",
+      "key": "shift"
+    },
+    {
+      "time": 6.516,
+      "type": "key_release",
+      "key": "shift"
+    },
+    {
+      "time": 7.469,
+      "type": "key_press",
+      "key": "w"
+    },
+    {
+      "time": 7.969,
+      "type": "key_press",
+      "key": "shift"
+    },
+    {
+      "time": 8.406,
+      "type": "key_release",
+      "key": "shift"
+    },
+    {
+      "time": 9.047,
+      "type": "key_press",
+      "key": "shift"
+    },
+    {
+      "time": 9.156,
+      "type": "key_press",
+      "key": "W"
+    },
+    {
+      "time": 9.203,
+      "type": "key_release",
+      "key": "shift"
+    },
+    {
+      "time": 9.25,
+      "type": "key_release",
+      "key": "w"
+    },
+    {
+      "time": 10.109,
+      "type": "key_press",
+      "key": "w"
+    },
+    {
+      "time": 10.422,
+      "type": "key_release",
+      "key": "w"
+    },
+    {
+      "time": 12.047,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 12.234,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": "**从会客室走到物资出售终端（子操作）**\n\n!!起始状态：3DUI，传送后闲置状态，舰船会客室（包括访问好友会客室），不可以有任何视角移动!!\n\n结束状态：3DUI，物资终端旁边，按F即可开启面板"
+}

@@ -1,0 +1,12 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\个人好友助力.json"
+    },
+    {
+      "config": "configs\\谷地派单.json"
+    }
+  ],
+  "comment": "**谷地快递派单**\n\n!!起始状态：3DUI!!\n\n结束状态：3DUI"
+}
