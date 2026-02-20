@@ -17,6 +17,7 @@ from PIL import Image, ImageTk
 
 from automation import Recorder, StopExecution, load_steps, run_step, save_steps
 from goods_processor import process_goods_image, analyze_goods_data, format_goods_ocr_items
+from home_assistance_processor import process_home_assistance
 from i18n import I18n
 
 # ===== Directional Mouse Control via Arrow Keys =====
@@ -192,13 +193,19 @@ def start_gui() -> int:
     edit_config_type = None  # Store the type: 'composite', 'timeline', or 'legacy'
     re_recording_step_index = None  # Track which step is being re-recorded
     re_recording_mode = None  # Track re-recording mode: 're-record', 'insert-above', 'insert-below'
-    edit_play_index = 0  # Track single-step playback position in edit mode
+    
+    # Base OCR operations
     ocr_operations = [
         ("goods_ocr_gudi", "goods_ocr (gudi)"),
         ("goods_ocr_wuling", "goods_ocr (wuling)"),
-        ("home_assist_ocr", "home_assist_ocr"),
         ("qingbao_ocr", "qingbao_ocr"),
     ]
+    
+    # Dynamically add item operations from templates/items
+    from backpack_processor import get_item_templates
+    for item_id, template_path in get_item_templates():
+        ocr_operations.append((f"item_{item_id}", f"item: {item_id}"))
+    
     active_ocr_operations: list[str] = []
     running = False
     stop_event = threading.Event()
@@ -860,7 +867,7 @@ def start_gui() -> int:
     
     def refresh_edit_tree() -> None:
         """Refresh the tree view using the current edit_data in memory."""
-        nonlocal edit_config_type, edit_play_index
+        nonlocal edit_config_type
         
         if edit_data is None:
             edit_tree.delete(*edit_tree.get_children())
@@ -868,7 +875,6 @@ def start_gui() -> int:
             return
         
         edit_tree.delete(*edit_tree.get_children())
-        edit_play_index = 0
         
         # Determine config type
         if isinstance(edit_data, dict) and edit_data.get("type") == "composite":
@@ -923,6 +929,8 @@ def start_gui() -> int:
             return f"Template: {event.get('template', '')}"
         elif event_type == "home_assist_ocr":
             return "Home assist template recognition"
+        elif event_type == "item_drag":
+            return f"Item drag: {event.get('item_id', '')}"
         elif event_type == "qingbao_ocr":
             return "Qingbao template recognition"
         else:
@@ -966,119 +974,7 @@ def start_gui() -> int:
             app_logger.error(f"Failed to save edited config: {e}")
             messagebox.showerror("Error", f"Failed to save: {e}")
 
-    def step_play() -> None:
-        """Play one step per click in edit mode."""
-        nonlocal edit_play_index, running
 
-        if recorder.recording or running:
-            return
-        if edit_data is None:
-            messagebox.showinfo("Info", i18n.t("load_config_first"))
-            return
-
-        def execute_config_recursive_for_step(config_path: Path | str) -> None:
-            data = load_steps(config_path)
-            if isinstance(data, dict) and "timeline" in data:
-                from automation import run_timeline
-                run_timeline(data, stop_check=stop_event.is_set, wait_for_events=True)
-            elif isinstance(data, dict) and data.get("type") == "composite":
-                for item in data.get("configs", []):
-                    if stop_event.is_set():
-                        raise StopExecution()
-                    sub_config_path = item.get("config") if isinstance(item, dict) else item
-                    if not sub_config_path:
-                        continue
-                    execute_config_recursive_for_step(Path(sub_config_path))
-            else:
-                for step in data:
-                    if stop_event.is_set():
-                        raise StopExecution()
-                    run_step(step, stop_check=stop_event.is_set)
-
-        def finalize() -> None:
-            nonlocal running
-            running = False
-            stop_event.clear()
-            set_controls(recorder.recording, running)
-            show_gui()
-
-        if edit_config_type == "composite":
-            configs = edit_data.get("configs", [])
-            if not configs:
-                status_var.set("No steps to play.")
-                return
-            if edit_play_index >= len(configs):
-                edit_play_index = 0
-            item = configs[edit_play_index]
-            config_path = item.get("config") if isinstance(item, dict) else item
-            if not config_path:
-                status_var.set("Config path missing.")
-                return
-            total_steps = len(configs)
-            label = f"Step play {edit_play_index + 1}/{total_steps}"
-
-            def action() -> None:
-                execute_config_recursive_for_step(Path(config_path))
-
-        elif edit_config_type == "timeline":
-            timeline = edit_data.get("timeline", [])
-            if not timeline:
-                status_var.set("No steps to play.")
-                return
-            if edit_play_index >= len(timeline):
-                edit_play_index = 0
-            event = timeline[edit_play_index].copy()
-            event["time"] = 0
-            data = {"timeline": [event]}
-            goods_template = edit_data.get("goods_template")
-            if goods_template:
-                data["goods_template"] = goods_template
-            total_steps = len(timeline)
-            label = f"Step play {edit_play_index + 1}/{total_steps}"
-
-            def action() -> None:
-                from automation import run_timeline
-                run_timeline(data, stop_check=stop_event.is_set, wait_for_events=True)
-
-        elif edit_config_type == "legacy":
-            steps = edit_data if isinstance(edit_data, list) else []
-            if not steps:
-                status_var.set("No steps to play.")
-                return
-            if edit_play_index >= len(steps):
-                edit_play_index = 0
-            step = steps[edit_play_index]
-            total_steps = len(steps)
-            label = f"Step play {edit_play_index + 1}/{total_steps}"
-
-            def action() -> None:
-                run_step(step, stop_check=stop_event.is_set)
-
-        else:
-            return
-
-        def execute() -> None:
-            nonlocal edit_play_index, running
-            try:
-                pyautogui.FAILSAFE = True
-                running = True
-                stop_event.clear()
-                set_controls(recorder.recording, running)
-                status_var.set(label)
-                minimize_gui()
-                action()
-                edit_play_index += 1
-                if edit_play_index >= total_steps:
-                    edit_play_index = 0
-            except StopExecution:
-                status_var.set("Step play stopped.")
-            except (OSError, ValueError) as exc:
-                messagebox.showerror("Error", f"Failed to run step: {exc}")
-                status_var.set("Idle")
-            finally:
-                finalize()
-
-        threading.Thread(target=execute, daemon=True).start()
     
     def delete_edit_step() -> None:
         """Delete the selected step from the edit view."""
@@ -1829,15 +1725,6 @@ def start_gui() -> int:
     )
     save_edit_button.pack(side=tk.LEFT, padx=(0, 4))
 
-    step_play_button = ttk.Button(
-        edit_button_frame,
-        text=i18n.t("step_play"),
-        command=lambda: step_play(),
-        width=10,
-        style="Modern.TButton",
-    )
-    step_play_button.pack(side=tk.LEFT, padx=(0, 4))
-
     # Steps list frame
     edit_list_frame = tk.LabelFrame(edit_tab, text=i18n.t("edit_steps"), padx=4, pady=4)
     edit_list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 6))
@@ -1969,19 +1856,16 @@ def start_gui() -> int:
                     recorder._skip_recording = True
 
                     time.sleep(0.3)
-                    result = process_goods_image(save_screenshot=False, template_path=template_path)
+                    result = process_goods_image(template_path=template_path)
                     app_logger.info(
-                        "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                        "goods_ocr result: template=%s",
                         result.get("template"),
-                        result.get("region"),
-                        result.get("cols"),
-                        result.get("rows"),
                     )
                     for item_line in format_goods_ocr_items(result):
                         app_logger.info("goods_ocr item: %s", item_line)
 
                     # Analyze goods data and auto-click the cheapest item
-                    analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
+                    analysis = analyze_goods_data(result)
                     if analysis:
                         time.sleep(0.1)
                         # Auto-click the cheapest item - this and any related ops won't be recorded
@@ -2002,24 +1886,21 @@ def start_gui() -> int:
         def process() -> None:
             try:
                 time.sleep(0.8)
-                result = process_goods_image(save_screenshot=False, template_path=template_path)
+                result = process_goods_image(template_path=template_path)
                 app_logger.info(f"Goods processing result: {json.dumps(result, ensure_ascii=False)}")
                 app_logger.info(
-                    "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                    "goods_ocr result: template=%s",
                     result.get("template"),
-                    result.get("region"),
-                    result.get("cols"),
-                    result.get("rows"),
                 )
                 for item_line in format_goods_ocr_items(result):
                     app_logger.info("goods_ocr item: %s", item_line)
 
                 # Analyze goods data and auto-click the cheapest item
-                analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
+                analysis = analyze_goods_data(result)
                 if analysis:
-                    app_logger.info(f"Found cheapest: Row {analysis['row']}, Col {analysis['col']} ({analysis['percent']})")
+                    app_logger.info(f"Found cheapest: {analysis['percent']}")
                     ui_call(lambda: status_var.set(
-                        f"Found cheapest: Row {analysis['row']}, Col {analysis['col']} ({analysis['percent']}) - Clicking..."
+                        f"Found cheapest: {analysis['percent']} - Clicking..."
                     ))
                     time.sleep(0.3)
                     # Auto-click the cheapest item
@@ -2058,26 +1939,14 @@ def start_gui() -> int:
                     recorder._skip_recording = True
                     
                     time.sleep(0.3)
-                    # Take full screenshot
-                    screenshot = pyautogui.screenshot()
+                    result = process_home_assistance()
                     
-                    # Recognize template: templates/home_use_assistance
-                    from ocr import recognize_template
-                    result = recognize_template(screenshot, "home_use_assistance.png")
-                    
-                    if result and result['confidence'] > 90:
-                        x, y = result['x'], result['y']
-                        app_logger.info(f"Template recognized with {result['confidence']:.1f}% confidence, clicking at ({x}, {y})")
-                        
-                        # Click twice with 0.5s interval
-                        pyautogui.click(x, y)
-                        time.sleep(0.5)
-                        pyautogui.click(x, y)
-                        status_var.set(f"Home Assist: Clicked at ({x}, {y})")
+                    if result["success"]:
+                        app_logger.info(result["message"])
+                        status_var.set(f"Home Assist: Clicked at ({result['center_x']}, {result['center_y']})")
                     else:
-                        confidence = result['confidence'] if result else 0
-                        app_logger.info(f"Template not recognized (confidence: {confidence:.1f}%)")
-                        status_var.set(f"Home Assist: Confidence too low ({confidence:.1f}%)")
+                        app_logger.info(result["message"])
+                        status_var.set(f"Home Assist: {result['message']}")
                 finally:
                     # Re-enable recording
                     recorder._skip_recording = False
@@ -2093,31 +1962,83 @@ def start_gui() -> int:
         def process() -> None:
             try:
                 time.sleep(0.8)
-                # Take full screenshot
-                screenshot = pyautogui.screenshot()
+                result = process_home_assistance()
                 
-                # Recognize template: templates/home_use_assistance
-                from ocr import recognize_template
-                result = recognize_template(screenshot, "home_use_assistance.png")
-                
-                if result and result['confidence'] > 90:
-                    x, y = result['x'], result['y']
-                    app_logger.info(f"Template recognized with {result['confidence']:.1f}% confidence, clicking at ({x}, {y})")
-                    
-                    # Click twice with 0.5s interval
-                    pyautogui.click(x, y)
-                    time.sleep(0.5)
-                    pyautogui.click(x, y)
-                    ui_call(lambda: status_var.set(f"Home Assist: Clicked at ({x}, {y})"))
+                if result["success"]:
+                    app_logger.info(result["message"])
+                    ui_call(lambda: status_var.set(f"Home Assist: Clicked at ({result['center_x']}, {result['center_y']})"))
                 else:
-                    confidence = result['confidence'] if result else 0
-                    app_logger.info(f"Template not recognized (confidence: {confidence:.1f}%)")
-                    ui_call(lambda: status_var.set(f"Home Assist: Confidence too low ({confidence:.1f}%)"))
+                    app_logger.info(result["message"])
+                    ui_call(lambda: status_var.set(f"Home Assist: {result['message']}"))
             except Exception as e:
                 app_logger.error(f"Error in home assist OCR: {e}", exc_info=True)
                 ui_call(lambda: status_var.set("Home Assist: Error"))
             finally:
                 ui_call(show_gui)
+        
+        threading.Thread(target=process, daemon=True).start()
+
+    def on_item_drag(item_id: str) -> None:
+        """Execute item drag operation."""
+        if running:
+            return
+        
+        if recorder.recording:
+            # Record the item_drag event
+            recorder._add_event("item_drag", item_id=item_id)
+            status_var.set(f"Item drag step recorded: {item_id}")
+            app_logger.info(f"Recorded item_drag step: {item_id}")
+            
+            # Execute the operation immediately
+            def execute_item_drag() -> None:
+                try:
+                    recorder._skip_recording = True
+                    time.sleep(0.3)
+                    
+                    from backpack_processor import process_item_drag
+                    result = process_item_drag(item_id)
+                    
+                    if result.get("success"):
+                        app_logger.info(f"Item drag executed: {item_id}")
+                    else:
+                        error = result.get("error", "Unknown error")
+                        app_logger.error(f"Item drag failed: {error}")
+                        ui_call(lambda: status_var.set(f"Failed: {error}"))
+                finally:
+                    recorder._skip_recording = False
+            
+            threading.Thread(target=execute_item_drag, daemon=True).start()
+            return
+        
+        minimize_gui()
+        status_var.set(f"Processing {item_id}...")
+        app_logger.info(f"Starting item drag: {item_id}")
+        
+        def process() -> None:
+            try:
+                time.sleep(0.3)
+                from backpack_processor import process_item_drag
+                
+                result = process_item_drag(item_id)
+                
+                if result.get("success"):
+                    start = result["start"]
+                    end = result["end"]
+                    confidence = result.get("confidence", 0)
+                    app_logger.info(
+                        f"Item drag completed: {item_id} from {start} to {end}, confidence={confidence:.2%}"
+                    )
+                    ui_call(lambda: status_var.set(f"Item {item_id} dragged successfully"))
+                else:
+                    error = result.get("error", "Unknown error")
+                    app_logger.error(f"Item drag failed: {error}")
+                    ui_call(lambda: status_var.set(f"Failed: {error}"))
+            except Exception as exc:
+                app_logger.error(f"Item drag failed: {exc}")
+                ui_call(messagebox.showerror, "Error", f"Item drag failed: {exc}")
+                ui_call(lambda: status_var.set("Idle"))
+            finally:
+                show_gui()
         
         threading.Thread(target=process, daemon=True).start()
 
@@ -2184,6 +2105,12 @@ def start_gui() -> int:
             on_home_assist_ocr()
         elif operation_id == "qingbao_ocr":
             on_qingbao_hotkey()
+        elif operation_id.startswith("item_"):
+            # Handle item drag operations
+            item_id = operation_id[5:]  # Remove "item_" prefix
+            on_item_drag(item_id)
+        else:
+            status_var.set(f"Unknown operation: {operation_id}")
 
     def run_active_ocr_slot(slot_index: int) -> None:
         if slot_index < 0 or slot_index >= len(active_ocr_operations):

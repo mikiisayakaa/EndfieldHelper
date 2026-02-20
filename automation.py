@@ -511,18 +511,15 @@ def run_timeline(
                         template_path = template_key
                     else:
                         template_path = Path("templates") / template_key
-                result = process_goods_image(save_screenshot=False, template_path=template_path)
+                result = process_goods_image(template_path=template_path)
                 logger = logging.getLogger("app")
                 logger.info(
-                    "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+                    "goods_ocr result: template=%s",
                     result.get("template"),
-                    result.get("region"),
-                    result.get("cols"),
-                    result.get("rows"),
                 )
                 for item_line in format_goods_ocr_items(result):
                     logger.info("goods_ocr item: %s", item_line)
-                analysis = analyze_goods_data(result, cols=result.get("cols", 7), rows=result.get("rows", 2))
+                analysis = analyze_goods_data(result)
                 if analysis:
                     time.sleep(0.3)
                     # Auto-click the cheapest item
@@ -531,29 +528,37 @@ def run_timeline(
                 print(f"Error executing goods_ocr: {e}")
         elif event_type == "home_assist_ocr":
             # Home Assistant OCR - recognize template and click if confidence > 90%
-            from ocr import recognize_template
+            from home_assistance_processor import process_home_assistance
             
             try:
-                # Take full screenshot
-                screenshot = pyautogui.screenshot()
+                result = process_home_assistance()
                 
-                # Recognize template: templates/home_use_assistance
-                result = recognize_template(screenshot, "home_use_assistance.png")
-                
-                if result and result['confidence'] > 90:
-                    x, y = result['x'], result['y']
-                    print(f"home_assist_ocr: Template recognized with {result['confidence']:.1f}% confidence")
-                    
-                    # Click twice with 0.5s interval
-                    pyautogui.click(x, y)
-                    time.sleep(0.5)
-                    pyautogui.click(x, y)
-                    print(f"home_assist_ocr: Clicked at ({x}, {y})")
+                if result["success"]:
+                    print(f"home_assist_ocr: {result['message']}")
                 else:
-                    confidence = result['confidence'] if result else 0
-                    print(f"home_assist_ocr: Template not recognized (confidence: {confidence:.1f}%)")
+                    print(f"home_assist_ocr: {result['message']}")
             except Exception as e:
                 print(f"Error executing home_assist_ocr: {e}")
+        elif event_type == "item_drag":
+            try:
+                from backpack_processor import process_item_drag
+                
+                item_id = event.get("item_id")
+                if not item_id:
+                    print("item_drag: Missing item_id")
+                else:
+                    result = process_item_drag(item_id)
+                    
+                    if result.get("success"):
+                        start = result["start"]
+                        end = result["end"]
+                        confidence = result.get("confidence", 0)
+                        print(f"item_drag: {item_id} dragged from {start} to {end}, confidence={confidence:.2%}")
+                    else:
+                        error = result.get("error", "Unknown error")
+                        print(f"item_drag: Failed - {error}")
+            except Exception as e:
+                print(f"Error executing item_drag: {e}")
         elif event_type == "qingbao_loop":
             from qingbao_processor import run_qingbao_loop
 
@@ -718,14 +723,11 @@ def run_step(
             format_goods_ocr_items,
         )
 
-        result = process_goods_image(save_screenshot=False)
+        result = process_goods_image()
         logger = logging.getLogger("app")
         logger.info(
-            "goods_ocr result: template=%s region=%s cols=%s rows=%s",
+            "goods_ocr result: template=%s",
             result.get("template"),
-            result.get("region"),
-            result.get("cols"),
-            result.get("rows"),
         )
         for item_line in format_goods_ocr_items(result):
             logger.info("goods_ocr item: %s", item_line)
@@ -738,7 +740,7 @@ def run_step(
             center_y = analysis["center_y"]
             if stop_check and stop_check():
                 raise StopExecution("Stopped")
-            print(f"goods_ocr: Clicking at ({center_x}, {center_y}) - Row {analysis['row']}, Col {analysis['col']}, {analysis['percent']}")
+            print(f"goods_ocr: Clicking at ({center_x}, {center_y}) - {analysis['percent']}")
             _mouse_click(center_x, center_y)
             
             # Execute follow-up actions after successful click
@@ -774,28 +776,16 @@ def run_step(
 
     elif action == "home_assist_ocr":
         result = None
-        from ocr import recognize_template
+        from home_assistance_processor import process_home_assistance
         
-        # Take full screenshot
-        screenshot = pyautogui.screenshot()
+        result = process_home_assistance(stop_check=stop_check)
         
-        # Recognize template: templates/home_use_assistance
-        result = recognize_template(screenshot, "home_use_assistance.png")
-        
-        if result and result['confidence'] > 90:
-            x, y = result['x'], result['y']
+        if result["success"]:
             if stop_check and stop_check():
                 raise StopExecution("Stopped")
-            print(f"home_assist_ocr: Template recognized with {result['confidence']:.1f}% confidence")
-            
-            # Click twice with 0.5s interval
-            _mouse_click(x, y)
-            _sleep_with_stop(0.5, stop_check)
-            _mouse_click(x, y)
-            print(f"home_assist_ocr: Clicked at ({x}, {y})")
+            print(f"home_assist_ocr: {result['message']}")
         else:
-            confidence = result['confidence'] if result else 0
-            print(f"home_assist_ocr: Template not recognized (confidence: {confidence:.1f}%)")
+            print(f"home_assist_ocr: {result['message']}")
         
         if delay > 0:
             _sleep_with_stop(delay, stop_check)

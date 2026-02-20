@@ -75,6 +75,134 @@ def compare_similarity(candidate_bgr: np.ndarray, template_bgr: np.ndarray) -> f
     return ssim_color(candidate_bgr, template_bgr)
 
 
+def find_template_sift(
+    screen_image: Image.Image | np.ndarray,
+    template_path: Path | str,
+    min_matches: int = 4,
+    screen_gray: np.ndarray | None = None,
+) -> dict | None:
+    """
+    Find a template in the screen image using SIFT feature matching.
+    
+    Args:
+        screen_image: Screen image (PIL Image or numpy array in BGR format)
+        template_path: Path to template image
+        min_matches: Minimum number of good feature matches required
+        screen_gray: Optional pre-computed grayscale screen image
+    
+    Returns:
+        Dict with:
+        {
+            "center_x": int,
+            "center_y": int,
+            "confidence": float (0.0 to 1.0),
+            "bbox": [x1, y1, x2, y2],
+            "matches": int (number of good matches)
+        }
+        or None if not found
+    """
+    template_path = Path(template_path)
+    if not template_path.exists():
+        print(f"Template not found: {template_path}")
+        return None
+    
+    # Convert screen image to BGR numpy array if needed
+    if isinstance(screen_image, Image.Image):
+        screen_cv = pil_to_bgr(screen_image)
+    else:
+        screen_cv = screen_image
+    
+    # Load template
+    template_bgr = load_template_bgr(template_path)
+    if template_bgr is None:
+        print(f"Failed to load template: {template_path}")
+        return None
+    
+    # Convert to grayscale
+    if screen_gray is None:
+        screen_gray = cv2.cvtColor(screen_cv, cv2.COLOR_BGR2GRAY)
+    template_gray = cv2.cvtColor(template_bgr, cv2.COLOR_BGR2GRAY)
+    
+    # Initialize SIFT detector
+    sift = cv2.SIFT_create()
+    
+    # Detect keypoints and descriptors
+    kp_screen, des_screen = sift.detectAndCompute(screen_gray, None)
+    kp_template, des_template = sift.detectAndCompute(template_gray, None)
+    
+    if des_screen is None or des_template is None:
+        print("SIFT: Not enough features found")
+        return None
+    
+    # Create matcher and perform KNN matching
+    matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+    matches = matcher.knnMatch(des_template, des_screen, k=2)
+    
+    # Apply Lowe's ratio test to filter good matches
+    good_matches = []
+    for match_pair in matches:
+        if len(match_pair) == 2:
+            m, n = match_pair
+            if m.distance < 0.7 * n.distance:
+                good_matches.append(m)
+    
+    if len(good_matches) < min_matches:
+        print(f"SIFT: Only {len(good_matches)} good matches found (need {min_matches})")
+        return None
+    
+    # Extract location of good matches
+    src_pts = np.float32([kp_template[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32([kp_screen[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    
+    # Find homography matrix using RANSAC
+    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+    
+    if H is None:
+        print("SIFT: Failed to compute homography")
+        return None
+    
+    # Get template corners and transform to screen coordinates
+    template_h, template_w = template_bgr.shape[:2]
+    corners = np.float32([
+        [0, 0],
+        [template_w, 0],
+        [template_w, template_h],
+        [0, template_h]
+    ]).reshape(-1, 1, 2)
+    
+    transformed_corners = cv2.perspectiveTransform(corners, H)
+    transformed_corners = transformed_corners.reshape(-1, 2)
+    
+    # Get bounding box from transformed corners
+    x_coords = transformed_corners[:, 0]
+    y_coords = transformed_corners[:, 1]
+    x1 = int(np.floor(np.min(x_coords)))
+    x2 = int(np.ceil(np.max(x_coords)))
+    y1 = int(np.floor(np.min(y_coords)))
+    y2 = int(np.ceil(np.max(y_coords)))
+    
+    # Clamp to image bounds
+    x1 = max(0, x1)
+    y1 = max(0, y1)
+    x2 = min(screen_cv.shape[1], x2)
+    y2 = min(screen_cv.shape[0], y2)
+    
+    # Calculate center and confidence
+    center_x = int((x1 + x2) / 2)
+    center_y = int((y1 + y2) / 2)
+    confidence = np.sum(mask) / len(mask) if mask is not None else 1.0
+    
+    print(f"SIFT: Template matched! Matches: {len(good_matches)}, Confidence: {confidence:.2%}")
+    
+    return {
+        "center_x": center_x,
+        "center_y": center_y,
+        "confidence": float(confidence),
+        "bbox": [x1, y1, x2, y2],
+        "matches": len(good_matches),
+    }
+
+
 def recognize_template(
     full_screen_image: Image.Image,
     template_name: str,
@@ -82,116 +210,29 @@ def recognize_template(
 ) -> dict | None:
     """
     Recognize a template in the full screen image and return position with confidence.
+    
+    Returns dict with confidence (percentage), x, y (center), and bbox (x1, y1, x2, y2).
     """
     template_path = TEMPLATE_DIR / template_name
-
-    if not template_path.exists():
-        print(f"Template not found: {template_path}")
+    
+    result = find_template_sift(full_screen_image, template_path, min_matches)
+    
+    if result is None:
         return None
-
-    full_screen_cv = pil_to_bgr(full_screen_image)
-    template_img = cv2.imread(str(template_path))
-
-    if template_img is None:
-        print(f"Failed to load template: {template_path}")
-        return None
-
-    screen_gray = cv2.cvtColor(full_screen_cv, cv2.COLOR_BGR2GRAY)
-    template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
-
-    sift = cv2.SIFT_create()
-
-    kp_screen, des_screen = sift.detectAndCompute(screen_gray, None)
-    kp_template, des_template = sift.detectAndCompute(template_gray, None)
-
-    if des_screen is None or des_template is None:
-        print("SIFT: Not enough features found")
-        return None
-
-    matcher = None
-    use_gpu = False
-
-    try:
-        if cv2.cuda.getCudaEnabledDeviceCount() > 0:
-            matcher = cv2.cuda.DescriptorMatcher_createBFMatcher(cv2.NORM_L2)
-            use_gpu = True
-        else:
-            matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-    except Exception as exc:
-        print(f"SIFT: GPU BFMatcher failed ({exc}), using CPU matcher")
-        matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        use_gpu = False
-
-    if use_gpu:
-        try:
-            des_template_gpu = cv2.cuda_GpuMat()
-            des_screen_gpu = cv2.cuda_GpuMat()
-            des_template_gpu.upload(des_template.astype(np.float32))
-            des_screen_gpu.upload(des_screen.astype(np.float32))
-            matches = matcher.knnMatch(des_template_gpu, des_screen_gpu, k=2)
-        except Exception as exc:
-            print(f"SIFT: GPU matching error ({exc}), falling back to CPU")
-            matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-            matches = matcher.knnMatch(des_template, des_screen, k=2)
-    else:
-        matches = matcher.knnMatch(des_template, des_screen, k=2)
-
-    good_matches = []
-    for match_pair in matches:
-        if len(match_pair) == 2:
-            m, n = match_pair
-            if m.distance < 0.7 * n.distance:
-                good_matches.append(m)
-
-    if len(good_matches) < min_matches:
-        print(f"SIFT: Only {len(good_matches)} good matches found (need {min_matches})")
-        return None
-
-    src_pts = np.float32([kp_template[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-    dst_pts = np.float32([kp_screen[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-
-    h_matrix, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-
-    if h_matrix is None:
-        print("SIFT: Failed to compute homography")
-        return None
-
-    template_h, template_w = template_img.shape[:2]
-    corners = np.float32(
-        [[0, 0], [template_w, 0], [template_w, template_h], [0, template_h]]
-    ).reshape(-1, 1, 2)
-
-    transformed_corners = cv2.perspectiveTransform(corners, h_matrix)
-    transformed_corners = transformed_corners.reshape(-1, 2)
-
-    x_coords = transformed_corners[:, 0]
-    y_coords = transformed_corners[:, 1]
-    x1 = int(np.floor(np.min(x_coords)))
-    x2 = int(np.ceil(np.max(x_coords)))
-    y1 = int(np.floor(np.min(y_coords)))
-    y2 = int(np.ceil(np.max(y_coords)))
-
-    x1 = max(0, x1)
-    y1 = max(0, y1)
-    x2 = min(full_screen_cv.shape[1], x2)
-    y2 = min(full_screen_cv.shape[0], y2)
-
-    confidence = np.sum(mask) / len(mask) if mask is not None else 1.0
-    confidence_percent = confidence * 100
-
-    center_x = (x1 + x2) // 2
-    center_y = (y1 + y2) // 2
-
+    
+    # Convert to legacy format for compatibility
+    confidence_percent = result["confidence"] * 100
+    
     print(
-        f"Template recognized: {template_name}, Confidence: {confidence_percent:.1f}%, Center: ({center_x}, {center_y})"
+        f"Template recognized: {template_name}, Confidence: {confidence_percent:.1f}%, Center: ({result['center_x']}, {result['center_y']})"
     )
-
+    
     return {
         "confidence": confidence_percent,
-        "x": center_x,
-        "y": center_y,
-        "x1": x1,
-        "y1": y1,
-        "x2": x2,
-        "y2": y2,
+        "x": result["center_x"],
+        "y": result["center_y"],
+        "x1": result["bbox"][0],
+        "y1": result["bbox"][1],
+        "x2": result["bbox"][2],
+        "y2": result["bbox"][3],
     }

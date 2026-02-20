@@ -2,13 +2,10 @@
   "type": "composite",
   "configs": [
     {
-      "config": "D:/Projects/endfieldhelper/configs/test1.json"
+      "config": "configs\\情报交流comp.json"
     },
     {
-      "config": "configs\\test.json"
-    },
-    {
-      "config": "configs\\test1.json"
+      "config": "configs\\舰船收菜简化版.json"
     }
   ],
   "comment": ""

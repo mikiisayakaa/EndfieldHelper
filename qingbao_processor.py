@@ -4,10 +4,12 @@ import logging
 from pathlib import Path
 from typing import Callable
 
+import cv2
+import numpy as np
 import pyautogui
 from PIL import Image, ImageGrab
 
-from ocr import compare_similarity, crop_right_fraction, load_template_bgr, match_template, pil_to_bgr
+from ocr import compare_similarity, crop_right_fraction, load_template_bgr, pil_to_bgr, find_template_sift
 
 TEMPLATE_DIR = Path("templates")
 QINGBAO_TEMPLATE = TEMPLATE_DIR / "qingbao.png"
@@ -25,37 +27,57 @@ def find_qingbao_target(
     screenshot: Image.Image,
     match_threshold: float = 0.7,
 ) -> dict | None:
+    """
+    Find qingbao target in screenshot using SIFT feature matching.
+    
+    Args:
+        screenshot: Full screen PIL Image
+        match_threshold: Minimum confidence threshold (not used with SIFT but kept for compatibility)
+    
+    Returns:
+        Dict with center_x, center_y, and scores, or None if not found
+    """
+    # Use ROI (right 20% of screen) for efficiency
     roi_image, offset_x, offset_y = crop_right_fraction(screenshot, 0.2)
     roi_bgr = pil_to_bgr(roi_image)
 
-    template_bgr = load_template_bgr(QINGBAO_TEMPLATE)
     invalid_bgr = load_template_bgr(QINGBAO_INVALID_TEMPLATE)
-    if template_bgr is None or invalid_bgr is None:
+    if invalid_bgr is None:
         return None
 
-    max_val, max_loc = match_template(roi_bgr, template_bgr)
-    if max_val < match_threshold:
+    # Use unified SIFT function to find template in ROI
+    result = find_template_sift(roi_bgr, QINGBAO_TEMPLATE, min_matches=4)
+    
+    if result is None:
         return None
 
-    t_height, t_width = template_bgr.shape[:2]
-    x, y = max_loc
-    if y + t_height > roi_bgr.shape[0] or x + t_width > roi_bgr.shape[1]:
+    # Extract candidate region and compare with valid/invalid templates
+    x1, y1, x2, y2 = result["bbox"]
+    candidate = roi_bgr[y1:y2, x1:x2]
+    if candidate.size == 0:
         return None
 
-    candidate = roi_bgr[y : y + t_height, x : x + t_width]
-    valid_score = compare_similarity(candidate, template_bgr)
+    # Load valid template for comparison
+    valid_bgr = load_template_bgr(QINGBAO_TEMPLATE)
+    if valid_bgr is None:
+        return None
+    
+    valid_score = compare_similarity(candidate, valid_bgr)
     invalid_score = compare_similarity(candidate, invalid_bgr)
 
     if valid_score < invalid_score:
         return None
 
-    center_x = offset_x + x + t_width // 2
-    center_y = offset_y + y + t_height // 2
+    # Calculate center in full screen coordinates
+    center_x = offset_x + result["center_x"]
+    center_y = offset_y + result["center_y"]
+
+    confidence = result["confidence"]
 
     return {
         "center_x": center_x,
         "center_y": center_y,
-        "score": max_val,
+        "score": float(confidence),
         "valid_score": valid_score,
         "invalid_score": invalid_score,
     }

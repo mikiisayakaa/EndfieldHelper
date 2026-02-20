@@ -1,48 +1,17 @@
 from __future__ import annotations
 
-import argparse
-import json
 import re
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import cv2
 import easyocr
 import numpy as np
 from PIL import Image, ImageGrab
-from pynput import keyboard
+
+from ocr import find_template_sift
 
 
 SCREENSHOT_DIR = Path("templates")
-SCREENSHOT_REGION = (129, 580, 2260, 1438)
-
-_DEBUG_MODE = False
-TEMPLATE_IMAGE_PATH = SCREENSHOT_DIR / "goods_template_gudi_7x2.png"
-
-# GPU initialization
-def _init_gpu() -> bool:
-    """Initialize and check GPU availability."""
-    try:
-        cuda_enabled = cv2.cuda.getCudaEnabledDeviceCount() > 0
-        if cuda_enabled:
-            # Get GPU device info
-            device_count = cv2.cuda.getCudaEnabledDeviceCount()
-            print(f"GPU detected: {device_count} CUDA device(s) available")
-            # Set active GPU (use first one)
-            cv2.cuda.setDevice(0)
-            cap = cv2.cuda.getCudaEnabledDeviceCount()
-            print(f"Active GPU device: {cv2.cuda.getDevice()}")
-            return True
-        else:
-            print("No CUDA-enabled GPU detected")
-            return False
-    except Exception as e:
-        print(f"GPU initialization error: {e}")
-        return False
-
-GPU_AVAILABLE = _init_gpu()
-_EASYOCR_GPU = GPU_AVAILABLE  # Use GPU for EasyOCR if available
 
 
 def parse_grid_from_template(template_path: Path | str) -> tuple[int, int]:
@@ -71,20 +40,20 @@ def parse_grid_from_template(template_path: Path | str) -> tuple[int, int]:
 
 def find_template_region(
     full_screen_image: Image.Image | None,
-    template_path: Path = TEMPLATE_IMAGE_PATH,
+    template_path: Path = None,
     min_matches: int = 4,
     full_screen_cv: np.ndarray | None = None,
     screen_gray: np.ndarray | None = None,
 ) -> tuple[int, int, int, int] | None:
     """
     Find the goods region in the full screen image using SIFT feature matching.
-    Robust to scaling, rotation, and perspective changes.
-    GPU-accelerated when available.
     
     Args:
         full_screen_image: Full screen image as PIL Image
         template_path: Path to template image
         min_matches: Minimum number of good feature matches required
+        full_screen_cv: Optional pre-computed screen in BGR format
+        screen_gray: Optional pre-computed grayscale screen
     
     Returns:
         Bounding box (x1, y1, x2, y2) if found, None otherwise
@@ -92,125 +61,20 @@ def find_template_region(
     if not template_path.exists():
         return None
     
-    if full_screen_cv is None or screen_gray is None:
+    # Use pre-computed screen if available, otherwise convert from PIL
+    if full_screen_cv is None:
         if full_screen_image is None:
             raise ValueError("full_screen_image is required when no precomputed screen is provided")
-        # Convert PIL images to OpenCV format (BGR)
         full_screen_cv = cv2.cvtColor(np.array(full_screen_image), cv2.COLOR_RGB2BGR)
-    template_img = cv2.imread(str(template_path))
     
-    if template_img is None:
+    # Use unified SIFT function
+    result = find_template_sift(full_screen_cv, template_path, min_matches, screen_gray)
+    
+    if result is None:
         return None
     
-    # Convert to grayscale
-    if screen_gray is None:
-        screen_gray = cv2.cvtColor(full_screen_cv, cv2.COLOR_BGR2GRAY)
-    template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
-    
-    # Initialize SIFT detector
-    sift = cv2.SIFT_create()
-    
-    # Detect keypoints and descriptors
-    kp_screen, des_screen = sift.detectAndCompute(screen_gray, None)
-    kp_template, des_template = sift.detectAndCompute(template_gray, None)
-    
-    if des_screen is None or des_template is None:
-        print("SIFT: Not enough features found")
-        return None
-    
-    # Use GPU-accelerated matcher if available
-    matcher = None
-    use_gpu = False
-    
-    try:
-        if cv2.cuda.getCudaEnabledDeviceCount() > 0:
-            # Try to use GPU-accelerated BFMatcher
-            matcher = cv2.cuda.DescriptorMatcher_createBFMatcher(cv2.NORM_L2)
-            use_gpu = True
-            print("SIFT: Using GPU-accelerated BFMatcher (CUDA)")
-        else:
-            matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-            print("SIFT: Using CPU BFMatcher")
-    except Exception as e:
-        print(f"SIFT: GPU BFMatcher failed ({e}), using CPU matcher")
-        matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        use_gpu = False
-    
-    # KNN matching
-    if use_gpu:
-        # For GPU matcher, upload to GPU first
-        try:
-            des_template_gpu = cv2.cuda_GpuMat()
-            des_screen_gpu = cv2.cuda_GpuMat()
-            des_template_gpu.upload(des_template.astype(np.float32))
-            des_screen_gpu.upload(des_screen.astype(np.float32))
-            matches = matcher.knnMatch(des_template_gpu, des_screen_gpu, k=2)
-        except Exception as e:
-            print(f"SIFT: GPU matching error ({e}), falling back to CPU")
-            matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-            matches = matcher.knnMatch(des_template, des_screen, k=2)
-    else:
-        # CPU matcher
-        matches = matcher.knnMatch(des_template, des_screen, k=2)
-    
-    # Apply Lowe's ratio test to filter good matches
-    good_matches = []
-    for match_pair in matches:
-        if len(match_pair) == 2:
-            m, n = match_pair
-            # If first match is significantly better than second, it's a good match
-            if m.distance < 0.7 * n.distance:
-                good_matches.append(m)
-    
-    if len(good_matches) < min_matches:
-        print(f"SIFT: Only {len(good_matches)} good matches found (need {min_matches})")
-        return None
-    
-    # Extract location of good matches
-    src_pts = np.float32([kp_template[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-    dst_pts = np.float32([kp_screen[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-    
-    # Find homography matrix using RANSAC
-    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-    
-    if H is None:
-        print("SIFT: Failed to compute homography")
-        return None
-    
-    # Get template corners in template coordinate system
-    template_h, template_w = template_img.shape[:2]
-    corners = np.float32([
-        [0, 0],
-        [template_w, 0],
-        [template_w, template_h],
-        [0, template_h]
-    ]).reshape(-1, 1, 2)
-    
-    # Transform corners to screen coordinate system
-    transformed_corners = cv2.perspectiveTransform(corners, H)
-    transformed_corners = transformed_corners.reshape(-1, 2)
-    
-    # Get bounding box from transformed corners
-    x_coords = transformed_corners[:, 0]
-    y_coords = transformed_corners[:, 1]
-    x1 = int(np.floor(np.min(x_coords)))
-    x2 = int(np.ceil(np.max(x_coords)))
-    y1 = int(np.floor(np.min(y_coords)))
-    y2 = int(np.ceil(np.max(y_coords)))
-    
-    # Clamp to image bounds
-    x1 = max(0, x1)
-    y1 = max(0, y1)
-    x2 = min(full_screen_cv.shape[1], x2)
-    y2 = min(full_screen_cv.shape[0], y2)
-    
-    # Calculate scale and confidence
-    scale_factor = np.linalg.norm(transformed_corners[1] - transformed_corners[0]) / template_w
-    confidence = np.sum(mask) / len(mask) if mask is not None else 1.0
-    
-    print(f"SIFT: Template matched! Scale: {scale_factor:.2f}x, Matches: {len(good_matches)}, Confidence: {confidence:.2%}")
-    
-    return (x1, y1, x2, y2)
+    bbox = result["bbox"]
+    return tuple(bbox)
 
 
 def _resolve_goods_group(template_path: Path | str | None) -> str | None:
@@ -374,39 +238,24 @@ def crop_percent_roi(tile_bgr: np.ndarray) -> np.ndarray:
     return tile_bgr[top:bottom, left:right]
 
 
-def process_goods_image(image_path: Path | None = None, save_screenshot: bool = True, template_path: Path | str | None = None) -> dict:
+def process_goods_image(template_path: Path | str | None = None) -> dict:
     """
-    Process a goods screenshot or image file.
-    Takes full screen screenshot if image_path is None, automatically detects goods region using template matching,
-    otherwise processes the given image.
+    Process a goods screenshot by taking a full screen capture and detecting goods items.
+    Automatically detects goods region using template matching.
     Returns JSON data with recognition results.
     
     Args:
-        image_path: Path to image file. If None, takes a full screen screenshot and auto-detects region.
-        save_screenshot: Whether to save the screenshot to disk (only used when image_path is None).
         template_path: Path to template image for region detection. If None, uses default TEMPLATE_IMAGE_PATH.
     
     Returns:
-        Dictionary with OCR results including "goods" list and "region" coordinates.
+        Dictionary with OCR results including "goods" list.
     """
     template_group = _resolve_goods_group(template_path)
     if template_group is None:
         raise ValueError("goods_ocr requires template group: gudi or wuling")
 
-    if image_path is None:
-        # Take full screen screenshot
-        full_screen = ImageGrab.grab()
-        image_path = "<screenshot>"
-    else:
-        full_screen = Image.open(image_path)
-
-    if save_screenshot and image_path == "<screenshot>":
-        SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        saved_path = SCREENSHOT_DIR / f"goods_{timestamp}.png"
-        full_screen.save(saved_path)
-        image_path = str(saved_path)
-        print(f"Screenshot saved: {saved_path}")
+    # Take full screen screenshot
+    full_screen = ImageGrab.grab()
 
     template_paths = _load_goods_item_templates(template_group)
     if not template_paths:
@@ -414,7 +263,7 @@ def process_goods_image(image_path: Path | None = None, save_screenshot: bool = 
 
     full_screen_cv = cv2.cvtColor(np.array(full_screen), cv2.COLOR_RGB2BGR)
     screen_gray = cv2.cvtColor(full_screen_cv, cv2.COLOR_BGR2GRAY)
-    reader = easyocr.Reader(["en"], gpu=_EASYOCR_GPU)
+    reader = easyocr.Reader(["en"], gpu=False)
     results = []
 
     for template_img in template_paths:
@@ -436,8 +285,6 @@ def process_goods_image(image_path: Path | None = None, save_screenshot: bool = 
         center_y = int((y1 + y2) / 2)
         results.append(
             {
-                "row": None,
-                "col": None,
                 "percent": percent_text,
                 "arrow": arrow_color,
                 "center_x": center_x,
@@ -448,33 +295,22 @@ def process_goods_image(image_path: Path | None = None, save_screenshot: bool = 
         )
 
     return {
-        "timestamp": datetime.now().isoformat(),
-        "screenshot": str(image_path),
-        "debug_dir": None,
         "goods": results,
-        "region": None,
-        "cols": None,
-        "rows": None,
         "template": template_group,
-        "template_group": template_group,
     }
 
 
-def analyze_goods_data(ocr_result: dict, cols: int = 7, rows: int = 2) -> dict | None:
+def analyze_goods_data(ocr_result: dict) -> dict | None:
     """
     Analyze OCR result to find the item with max percentage and green arrow.
-    Returns the row, col, percent value, and the center position of the tile.
+    Returns the percent value and the center position of the item.
     
     Args:
         ocr_result: Output from process_goods_image()
-        cols: Number of columns in grid (default 7)
-        rows: Number of rows in grid (default 2)
     
     Returns:
         A dict with:
         {
-            "row": int,
-            "col": int,
             "percent": str (e.g., "5.2%"),
             "percent_value": float (e.g., 5.2),
             "center_x": int,
@@ -503,30 +339,12 @@ def analyze_goods_data(ocr_result: dict, cols: int = 7, rows: int = 2) -> dict |
     
     max_item = max(valid_items, key=lambda x: extract_percent_value(x.get("percent", "0%")))
     
-    row = max_item.get("row")  # 1 or 2
-    col = max_item.get("col")  # 1-7
     percent = max_item.get("percent")
     percent_value = extract_percent_value(percent)
-
     center_x = max_item.get("center_x")
     center_y = max_item.get("center_y")
-    if center_x is None or center_y is None:
-        # Get the region used (from ocr_result or use default)
-        region = ocr_result.get("region", SCREENSHOT_REGION)
-        x1, y1, x2, y2 = region
-        width = x2 - x1
-        height = y2 - y1
-
-        tile_width = width / cols
-        tile_height = height / rows
-
-        # Center position of the tile in screen coordinates
-        center_x = int(x1 + (col - 0.5) * tile_width)
-        center_y = int(y1 + (row - 0.5) * tile_height)
     
     return {
-        "row": row,
-        "col": col,
         "percent": percent,
         "percent_value": percent_value,
         "center_x": center_x,
@@ -540,8 +358,6 @@ def format_goods_ocr_items(ocr_result: dict) -> list[str]:
     formatted: list[str] = []
 
     for item in goods_list:
-        row = item.get("row")
-        col = item.get("col")
         percent = item.get("percent")
         arrow = item.get("arrow")
         template_name = item.get("template")
@@ -556,53 +372,12 @@ def format_goods_ocr_items(ocr_result: dict) -> list[str]:
         percent_text = percent if percent is not None else "none"
         if template_name:
             formatted.append(
-                f"row={row} col={col} template={template_name} direction={direction} percent={percent_text}"
+                f"template={template_name} direction={direction} percent={percent_text}"
             )
         else:
             formatted.append(
-                f"row={row} col={col} direction={direction} percent={percent_text}"
+                f"direction={direction} percent={percent_text}"
             )
 
     return formatted
 
-
-def on_capture() -> None:
-    try:
-        print("Processing...")
-        data = process_goods_image()
-        print(json.dumps(data, ensure_ascii=False, indent=2))
-        
-        # Analyze and print the result
-        analysis = analyze_goods_data(data, cols=data.get("cols", 7), rows=data.get("rows", 2))
-        if analysis:
-            print("\n=== Analysis Result ===")
-            print(f"Max green arrow item: Row {analysis['row']}, Col {analysis['col']}")
-            print(f"Percent: {analysis['percent']} ({analysis['percent_value']:.2f}%)")
-            print(f"Center position: ({analysis['center_x']}, {analysis['center_y']})")
-        else:
-            print("\nNo valid items found (percent not null and arrow is green)")
-    except Exception as e:
-        print(f"Error: {e}")
-
-
-def on_exit() -> None:
-    print("Exiting...")
-    sys.exit(0)
-
-
-def start_listener() -> None:
-    print("Goods Processor started. Press S to capture & process, X to exit.")
-    with keyboard.GlobalHotKeys({"s": on_capture, "x": on_exit}) as listener:
-        listener.join()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Goods Processor - OCR recognition for game goods")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode to save all cropped screenshots")
-    args = parser.parse_args()
-
-    if args.debug:
-        _DEBUG_MODE = True
-        print("Debug mode enabled")
-
-    start_listener()
