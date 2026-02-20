@@ -9,6 +9,7 @@ import sys
 import webbrowser
 import os
 import ctypes
+import queue
 from ctypes import wintypes
 
 import pyautogui
@@ -43,6 +44,7 @@ VK_UP = 0x26
 VK_DOWN = 0x28
 VK_CONTROL = 0x11
 MOD_NOREPEAT = 0x4000
+LLKHF_INJECTED = 0x10
 
 HOTKEY_ID_UP = 10
 HOTKEY_ID_DOWN = 11
@@ -213,6 +215,8 @@ def start_gui() -> int:
     hotkey_listener = None
     goods_listener = None
     should_close = False
+    arrow_event_queue: queue.Queue = queue.Queue(maxsize=512)
+    arrow_worker_thread = None
 
     config_menu = None
     
@@ -290,20 +294,65 @@ def start_gui() -> int:
             input_struct = INPUT(type=INPUT_MOUSE, mi=mouse_input)
             user32.SendInput(1, ctypes.byref(input_struct), ctypes.sizeof(INPUT))
         except Exception as e:
-            app_logger.error(f"Failed to send mouse move: {e}")
+            pass
+
+    def _enqueue_arrow_event(key_name: str, is_key_down: bool, is_key_up: bool, dx: int, dy: int) -> None:
+        try:
+            arrow_event_queue.put_nowait((key_name, is_key_down, is_key_up, dx, dy))
+        except Exception:
+            pass
+
+    def _arrow_key_worker() -> None:
+        while True:
+            item = arrow_event_queue.get()
+            if item is None:
+                break
+            key_name, is_key_down, is_key_up, dx, dy = item
+
+            if is_key_down:
+                try:
+                    if recorder.recording:
+                        recorder.record_arrow_key_press(key_name)
+                except Exception:
+                    pass
+                _send_mouse_move(dx, dy)
+            elif is_key_up:
+                try:
+                    if recorder.recording:
+                        recorder.record_arrow_key_release(key_name)
+                except Exception:
+                    pass
+
+    def _start_arrow_worker() -> None:
+        nonlocal arrow_worker_thread
+        if arrow_worker_thread is not None:
+            return
+        arrow_worker_thread = threading.Thread(target=_arrow_key_worker, daemon=True)
+        arrow_worker_thread.start()
+
+    def _stop_arrow_worker() -> None:
+        nonlocal arrow_worker_thread
+        if arrow_worker_thread is None:
+            return
+        arrow_event_queue.put(None)
+        arrow_worker_thread.join(timeout=1.0)
+        arrow_worker_thread = None
 
     def _keyboard_proc_arrow(n_code, w_param, l_param):
         """Low-level keyboard hook for arrow keys."""
         if n_code == 0:
             try:
                 info = ctypes.cast(l_param, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+                if info.flags & LLKHF_INJECTED:
+                    return user32.CallNextHookEx(None, n_code, w_param, l_param)
+
                 is_key_down = w_param in (WM_KEYDOWN, WM_SYSKEYDOWN)
                 is_key_up = w_param in (WM_KEYUP, WM_SYSKEYUP)
-                
+
                 # Determine which arrow key was pressed/released
                 key_name = None
                 dx, dy = 0, 0
-                
+
                 if info.vkCode == VK_RIGHT:
                     key_name = "right"
                     dx = MOUSE_MOVE_DISTANCE
@@ -316,30 +365,17 @@ def start_gui() -> int:
                 elif info.vkCode == VK_UP:
                     key_name = "up"
                     dy = -MOUSE_MOVE_DISTANCE
-                
-                # Record key press/release events during recording
+
                 if key_name:
                     if is_key_down:
                         # Check break code bit (bit 31 of flags) - if set, it's a key release
                         is_release = (info.flags & 0x80) != 0
                         if not is_release:
-                            # Record key press during recording
-                            try:
-                                if recorder.recording:
-                                    recorder.record_arrow_key_press(key_name)
-                            except Exception as e:
-                                app_logger.error(f"Failed to record arrow key press: {e}")
-                            # Execute mouse move on key down
-                            _send_mouse_move(dx, dy)
+                            _enqueue_arrow_event(key_name, True, False, dx, dy)
                     elif is_key_up:
-                        # Record key release during recording
-                        try:
-                            if recorder.recording:
-                                recorder.record_arrow_key_release(key_name)
-                        except Exception as e:
-                            app_logger.error(f"Failed to record arrow key release: {e}")
-            except Exception as e:
-                app_logger.error(f"Error in keyboard hook: {e}")
+                        _enqueue_arrow_event(key_name, False, True, dx, dy)
+            except Exception:
+                pass
         return user32.CallNextHookEx(None, n_code, w_param, l_param)
 
     def _start_arrow_key_hook() -> None:
@@ -2368,6 +2404,7 @@ def start_gui() -> int:
             )
             goods_listener.start()
         # Start the arrow key hook for mouse movement
+        _start_arrow_worker()
         _start_arrow_key_hook()
 
     def save_current_comment() -> None:
@@ -2410,6 +2447,7 @@ def start_gui() -> int:
             idle_listener.stop()
         # Stop the arrow key hook
         _stop_arrow_key_hook()
+        _stop_arrow_worker()
         root.destroy()
 
     start_hotkey_listener()

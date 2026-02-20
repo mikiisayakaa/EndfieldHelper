@@ -1,89 +1,319 @@
 {
   "timeline": [
     {
-      "time": 0.891,
+      "time": 1.156,
       "type": "drag",
-      "start_x": 1266,
-      "start_y": 893,
+      "start_x": 1272,
+      "start_y": 889,
       "end_x": 1279,
       "end_y": 799,
       "button": "left",
-      "duration": 0.09399999992456287
+      "duration": 0.09399999999982356
     },
     {
-      "time": 1.516,
+      "time": 1.5,
       "type": "click",
       "x": 1279,
       "y": 799,
       "button": "left"
     },
     {
-      "time": 2.422,
+      "time": 2.312,
       "type": "key_press",
-      "key": "w"
+      "key": "right"
     },
     {
-      "time": 2.485,
-      "type": "key_release",
-      "key": "w"
-    },
-    {
-      "time": 2.578,
+      "time": 2.812,
       "type": "key_press",
-      "key": "w"
-    },
-    {
-      "time": 2.656,
-      "type": "key_release",
-      "key": "w"
-    },
-    {
-      "time": 2.766,
-      "type": "key_press",
-      "key": "w"
+      "key": "right"
     },
     {
       "time": 2.844,
-      "type": "key_release",
-      "key": "w"
-    },
-    {
-      "time": 2.938,
       "type": "key_press",
-      "key": "w"
+      "key": "right"
     },
     {
-      "time": 3.016,
-      "type": "key_release",
-      "key": "w"
+      "time": 2.875,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 2.906,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 2.937,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 2.969,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.0,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.031,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.062,
+      "type": "key_press",
+      "key": "right"
     },
     {
       "time": 3.094,
       "type": "key_press",
-      "key": "w"
+      "key": "right"
+    },
+    {
+      "time": 3.109,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.156,
+      "type": "key_press",
+      "key": "right"
     },
     {
       "time": 3.172,
-      "type": "key_release",
-      "key": "w"
-    },
-    {
-      "time": 3.235,
       "type": "key_press",
-      "key": "w"
+      "key": "right"
     },
     {
-      "time": 3.344,
-      "type": "key_release",
-      "key": "w"
+      "time": 3.203,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.234,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.265,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.297,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.328,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.359,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.39,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.422,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.453,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.484,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.515,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.547,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.578,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.594,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.625,
+      "type": "key_press",
+      "key": "right"
     },
     {
       "time": 3.656,
       "type": "key_press",
-      "key": "ctrl_l"
+      "key": "right"
+    },
+    {
+      "time": 3.687,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.719,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.75,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.781,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.812,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.844,
+      "type": "key_press",
+      "key": "right"
     },
     {
       "time": 3.875,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.906,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.937,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 3.969,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.0,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.015,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.062,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.078,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.109,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.14,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.172,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.203,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.234,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.265,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.297,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.328,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.359,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.39,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.422,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.437,
+      "type": "key_press",
+      "key": "right"
+    },
+    {
+      "time": 4.453,
+      "type": "key_release",
+      "key": "right"
+    },
+    {
+      "time": 4.453,
+      "type": "key_release",
+      "key": "right"
+    },
+    {
+      "time": 4.781,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 4.953,
       "type": "key_press",
       "key": "\u0018"
     }

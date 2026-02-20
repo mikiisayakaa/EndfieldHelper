@@ -1,9 +1,12 @@
+import ctypes
 import json
 import logging
 import threading
 import time
 from pathlib import Path
 from typing import Callable
+
+from ctypes import wintypes
 
 import pyautogui
 from pynput import keyboard, mouse
@@ -361,10 +364,65 @@ def _get_pynput_key(key: str):
     return key_map.get(key.lower(), key)
 
 
+ARROW_KEY_MOVE_DISTANCE = 50
+
+INPUT_MOUSE = 0
+MOUSEEVENTF_MOVE = 0x0001
+
+ULONG_PTR = getattr(wintypes, "ULONG_PTR", ctypes.c_size_t)
+
+class MOUSEINPUT(ctypes.Structure):
+    _fields_ = [
+        ("dx", wintypes.LONG),
+        ("dy", wintypes.LONG),
+        ("mouseData", wintypes.DWORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+class INPUT(ctypes.Structure):
+    _fields_ = [("type", wintypes.DWORD), ("mi", MOUSEINPUT)]
+
 def _mouse_move_relative(dx: int, dy: int) -> None:
     """Move mouse by relative amount (dx, dy)."""
-    current_x, current_y = pyautogui.position()
-    pyautogui.moveTo(current_x + dx, current_y + dy)
+    try:
+        mouse_input = MOUSEINPUT(
+            dx=dx,
+            dy=dy,
+            mouseData=0,
+            dwFlags=MOUSEEVENTF_MOVE,
+            time=0,
+            dwExtraInfo=0,
+        )
+        input_struct = INPUT(type=INPUT_MOUSE, mi=mouse_input)
+        sent = ctypes.windll.user32.SendInput(1, ctypes.byref(input_struct), ctypes.sizeof(INPUT))
+        if sent == 0:
+            raise OSError("SendInput failed")
+    except Exception:
+        current_x, current_y = pyautogui.position()
+        pyautogui.moveTo(current_x + dx, current_y + dy)
+
+
+def _normalize_arrow_key_name(key_name: str | None) -> str | None:
+    if not key_name:
+        return None
+    name = str(key_name).lower()
+    if name.startswith("key."):
+        name = name[4:]
+    return name
+
+
+def _move_for_arrow_key(key_name: str | None) -> None:
+    name = _normalize_arrow_key_name(key_name)
+    if name == "right":
+        _mouse_move_relative(ARROW_KEY_MOVE_DISTANCE, 0)
+    elif name == "left":
+        _mouse_move_relative(-ARROW_KEY_MOVE_DISTANCE, 0)
+    elif name == "down":
+        _mouse_move_relative(0, ARROW_KEY_MOVE_DISTANCE)
+    elif name == "up":
+        _mouse_move_relative(0, -ARROW_KEY_MOVE_DISTANCE)
 
 
 def _mouse_down(button: str = "left") -> None:
@@ -406,9 +464,6 @@ def run_timeline(
     timeline = data.get("timeline", [])
     goods_template = data.get("goods_template")  # Get template from config
     
-    # Arrow key mouse movement distance (matches GUI setting)
-    ARROW_KEY_MOVE_DISTANCE = 50
-    
     if not timeline:
         raise ValueError("Timeline is empty")
     
@@ -437,14 +492,7 @@ def run_timeline(
                 pressed_keys[key_name] = pressed_keys.get(key_name, 0) + 1
             
             # For arrow keys, also execute mouse movement (direct execution during playback)
-            if key_name == "right":
-                _mouse_move_relative(ARROW_KEY_MOVE_DISTANCE, 0)
-            elif key_name == "left":
-                _mouse_move_relative(-ARROW_KEY_MOVE_DISTANCE, 0)
-            elif key_name == "down":
-                _mouse_move_relative(0, ARROW_KEY_MOVE_DISTANCE)
-            elif key_name == "up":
-                _mouse_move_relative(0, -ARROW_KEY_MOVE_DISTANCE)
+            _move_for_arrow_key(key_name)
         elif event_type == "key_release":
             key_name = event.get("key")
             key_obj = _get_pynput_key(key_name)
@@ -664,6 +712,7 @@ def run_step(
                 from pynput.keyboard import Controller, Key
                 controller = Controller()
                 _hold_key_for_duration(controller, key, duration, stop_check)
+                _move_for_arrow_key(key)
                 if interval > 0:
                     _sleep_with_stop(interval, stop_check)
         else:
@@ -674,6 +723,7 @@ def run_step(
                 if stop_check and stop_check():
                     raise StopExecution("Stopped")
                 pyautogui.press(key)
+                _move_for_arrow_key(key)
                 if interval > 0:
                     _sleep_with_stop(interval, stop_check)
 
