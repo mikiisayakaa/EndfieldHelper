@@ -16,8 +16,8 @@ import pyautogui
 from pynput import keyboard, mouse
 from PIL import Image, ImageTk
 
-from automation import Recorder, StopExecution, load_steps, run_step, save_steps
-from goods_processor import process_goods_image, analyze_goods_data, format_goods_ocr_items
+from automation import Recorder, StopExecution, load_steps, save_steps
+from goods_processor import process_goods_image, analyze_goods_data
 from home_assistance_processor import process_home_assistance
 from i18n import I18n
 
@@ -139,9 +139,8 @@ def start_gui() -> int:
     root.resizable(True, True)
     root.attributes("-topmost", True)
     root.withdraw()
-    root.grid_columnconfigure(0, weight=1, uniform="main_columns")
-    root.grid_columnconfigure(1, weight=3, uniform="main_columns")
-    root.grid_columnconfigure(2, weight=1, uniform="main_columns")
+    root.grid_columnconfigure(0, weight=4, uniform="main_columns")
+    root.grid_columnconfigure(1, weight=1, uniform="main_columns")
     root.grid_rowconfigure(3, weight=1)
     root.grid_rowconfigure(4, weight=1)
 
@@ -149,12 +148,10 @@ def start_gui() -> int:
         width = root.winfo_width()
         if width <= 1:
             return
-        col0 = int(width * 0.2)
-        col1 = int(width * 0.6)
-        col2 = max(1, width - col0 - col1)
+        col0 = int(width * 0.8)
+        col1 = max(1, width - col0)
         root.grid_columnconfigure(0, minsize=col0)
         root.grid_columnconfigure(1, minsize=col1)
-        root.grid_columnconfigure(2, minsize=col2)
 
     root.bind("<Configure>", _sync_root_column_sizes)
     root.after(0, _sync_root_column_sizes)
@@ -216,24 +213,10 @@ def start_gui() -> int:
     re_recording_step_index = None  # Track which step is being re-recorded
     re_recording_mode = None  # Track re-recording mode: 're-record', 'insert-above', 'insert-below'
     
-    # Base OCR operations
-    ocr_operations = [
-        ("goods_ocr_gudi", "goods_ocr (gudi)"),
-        ("goods_ocr_wuling", "goods_ocr (wuling)"),
-        ("qingbao_ocr", "qingbao_ocr"),
-    ]
-    
-    # Dynamically add item operations from templates/items
-    from backpack_processor import get_item_templates
-    for item_id, template_path in get_item_templates():
-        ocr_operations.append((f"item_{item_id}", f"item: {item_id}"))
-    
-    active_ocr_operations: list[str] = []
     running = False
     stop_event = threading.Event()
     idle_listener = None
     hotkey_listener = None
-    goods_listener = None
     should_close = False
     arrow_event_queue: queue.Queue = queue.Queue(maxsize=512)
     arrow_worker_thread = None
@@ -527,64 +510,6 @@ def start_gui() -> int:
             app_logger.error(f"Failed to load composite config: {e}")
             return False
 
-    def get_ocr_label(operation_id: str) -> str:
-        for op_id, label in ocr_operations:
-            if op_id == operation_id:
-                return label
-        return operation_id
-
-    def refresh_ocr_active_list() -> None:
-        ocr_active_listbox.delete(0, tk.END)
-        for idx, op_id in enumerate(active_ocr_operations, 1):
-            ocr_active_listbox.insert(tk.END, f"{idx}: {get_ocr_label(op_id)}")
-
-    def add_active_ocr(operation_id: str) -> None:
-        if operation_id in active_ocr_operations:
-            status_var.set("OCR operation already active")
-            return
-        if len(active_ocr_operations) >= 10:
-            status_var.set("Active OCR list is full (max 10)")
-            return
-        active_ocr_operations.append(operation_id)
-        refresh_ocr_active_list()
-
-    def remove_active_ocr(index: int) -> None:
-        if 0 <= index < len(active_ocr_operations):
-            active_ocr_operations.pop(index)
-            refresh_ocr_active_list()
-
-    def move_ocr_up() -> None:
-        selection = ocr_active_listbox.curselection()
-        if selection and selection[0] > 0:
-            idx = selection[0]
-            active_ocr_operations[idx - 1], active_ocr_operations[idx] = (
-                active_ocr_operations[idx],
-                active_ocr_operations[idx - 1],
-            )
-            refresh_ocr_active_list()
-            ocr_active_listbox.selection_set(idx - 1)
-
-    def move_ocr_down() -> None:
-        selection = ocr_active_listbox.curselection()
-        if selection and selection[0] < len(active_ocr_operations) - 1:
-            idx = selection[0]
-            active_ocr_operations[idx + 1], active_ocr_operations[idx] = (
-                active_ocr_operations[idx],
-                active_ocr_operations[idx + 1],
-            )
-            refresh_ocr_active_list()
-            ocr_active_listbox.selection_set(idx + 1)
-
-    def on_ocr_available_double_click(event) -> None:
-        selection = ocr_available_listbox.curselection()
-        if selection:
-            op_id = ocr_operations[selection[0]][0]
-            add_active_ocr(op_id)
-
-    def on_ocr_active_delete(event) -> None:
-        selection = ocr_active_listbox.curselection()
-        if selection:
-            remove_active_ocr(selection[0])
 
     def run_unified_config() -> None:
         """
@@ -620,6 +545,10 @@ def start_gui() -> int:
                 timeline = data.get("timeline", [])
                 ui_call(append_log_line, f"{indent}Running timeline with {len(timeline)} events")
                 
+                # Wait 0.5s at the start of top-level timeline
+                if depth == 0:
+                    time.sleep(0.5)
+                
                 def log_event(event: dict) -> None:
                     event_time = float(event.get("time", 0))
                     event_type = event.get("type")
@@ -648,8 +577,7 @@ def start_gui() -> int:
                         duration = event.get("duration", 0)
                         button = event.get("button", "left")
                         line = f"T{event_time:.3f}: drag {button} ({start_x}, {start_y}) -> ({end_x}, {end_y}) {duration:.3f}s"
-                    elif event_type == "goods_ocr":
-                        line = f"T{event_time:.3f}: goods_ocr (capture, recognize, click cheapest)"
+
                     else:
                         line = f"T{event_time:.3f}: {event_type}"
                     ui_call(append_log_line, line)
@@ -665,6 +593,10 @@ def start_gui() -> int:
                 composite_list = data.get("configs", [])
                 ui_call(append_log_line, f"{indent}Running composite format with {len(composite_list)} nested configs")
                 
+                # Wait 0.5s at the start of top-level composite
+                if depth == 0:
+                    time.sleep(0.5)
+                
                 for sub_idx, item in enumerate(composite_list, 1):
                     if stop_event.is_set():
                         raise StopExecution()
@@ -679,13 +611,6 @@ def start_gui() -> int:
                         depth + 1,
                         wait_for_timeline=True,
                     )
-            else:
-                # Legacy format
-                ui_call(append_log_line, f"{indent}Running legacy format with {len(data)} steps")
-                for step in data:
-                    if stop_event.is_set():
-                        raise StopExecution()
-                    run_step(step)
 
         log_text.config(state=tk.NORMAL)
         log_text.delete("1.0", tk.END)
@@ -710,13 +635,14 @@ def start_gui() -> int:
             running = False
             stop_event.clear()
             set_controls(recorder.recording, running)
+            time.sleep(0.5)
             show_gui()
 
         def execute() -> None:
             try:
                 pyautogui.FAILSAFE = True
                 ui_call(status_var.set, "Running config...")
-                execute_config_recursive(config_path)
+                execute_config_recursive(config_path, wait_for_timeline=True)
                 ui_call(status_var.set, "Run complete.")
                 app_logger.info("Config execution completed successfully")
             except StopExecution:
@@ -1368,14 +1294,6 @@ def start_gui() -> int:
             return f"Press '{event.get('key', '')}'"
         elif event_type == "key_release":
             return f"Release '{event.get('key', '')}'"
-        elif event_type == "goods_ocr":
-            return f"Template: {event.get('template', '')}"
-        elif event_type == "home_assist_ocr":
-            return "Home assist template recognition"
-        elif event_type == "item_drag":
-            return f"Item drag: {event.get('item_id', '')}"
-        elif event_type == "qingbao_ocr":
-            return "Qingbao template recognition"
         else:
             return json.dumps({k: v for k, v in event.items() if k != "type" and k != "time"})
     
@@ -2129,58 +2047,9 @@ def start_gui() -> int:
 
     padding = {"padx": 8, "pady": 6}
 
-    # ===== LEFT COLUMN: OCR Operations =====
-    ocr_frame = tk.LabelFrame(root, text="OCR Operations", padx=4, pady=4)
-    ocr_frame.grid(row=0, column=0, rowspan=6, sticky="nsew", **padding)
-
-    ocr_available_frame = tk.LabelFrame(ocr_frame, text="Available", padx=4, pady=4)
-    ocr_available_frame.pack(fill=tk.BOTH, expand=True)
-    ocr_available_listbox = tk.Listbox(ocr_available_frame, height=6)
-    ocr_available_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-    ocr_available_scroll = tk.Scrollbar(ocr_available_frame, orient=tk.VERTICAL)
-    ocr_available_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-    ocr_available_listbox.config(yscrollcommand=ocr_available_scroll.set)
-    ocr_available_scroll.config(command=ocr_available_listbox.yview)
-
-    for _, label in ocr_operations:
-        ocr_available_listbox.insert(tk.END, label)
-
-    ocr_active_frame = tk.LabelFrame(ocr_frame, text="Active (Ctrl+Shift+1-0)", padx=4, pady=4)
-    ocr_active_frame.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
-
-    ocr_active_buttons = tk.Frame(ocr_active_frame)
-    ocr_active_buttons.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 2))
-    ocr_up_button = ttk.Button(
-        ocr_active_buttons,
-        text=i18n.t("up"),
-        command=move_ocr_up,
-        width=2,
-        style="Modern.TButton",
-    )
-    ocr_up_button.pack(pady=(0, 2))
-    ocr_down_button = ttk.Button(
-        ocr_active_buttons,
-        text=i18n.t("down"),
-        command=move_ocr_down,
-        width=2,
-        style="Modern.TButton",
-    )
-    ocr_down_button.pack()
-
-    ocr_active_listbox = tk.Listbox(ocr_active_frame, height=6)
-    ocr_active_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-    ocr_active_scroll = tk.Scrollbar(ocr_active_frame, orient=tk.VERTICAL)
-    ocr_active_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-    ocr_active_listbox.config(yscrollcommand=ocr_active_scroll.set)
-    ocr_active_scroll.config(command=ocr_active_listbox.yview)
-
-    refresh_ocr_active_list()
-
     # ===== MIDDLE COLUMN: Controls and Log =====
     config_frame = tk.Frame(root)
-    config_frame.grid(row=0, column=1, sticky="we", **padding)
+    config_frame.grid(row=0, column=0, sticky="we", **padding)
     config_label = tk.Label(config_frame, text=i18n.t("config"))
     ui_elements['config_label'] = (config_label, 'config', False)
     config_label.pack(side=tk.LEFT, padx=(0, 5))
@@ -2218,10 +2087,10 @@ def start_gui() -> int:
     # Comment text frame
     comment_label = tk.Label(root, text=i18n.t("comment"), font=("Arial", 9))
     ui_elements['comment_label'] = (comment_label, 'comment', False)
-    comment_label.grid(row=1, column=1, sticky="w", **padding)
+    comment_label.grid(row=1, column=0, sticky="w", **padding)
     
     comment_frame = tk.Frame(root)
-    comment_frame.grid(row=2, column=1, sticky="nsew", **padding)
+    comment_frame.grid(row=2, column=0, sticky="nsew", **padding)
     comment_scrollbar = tk.Scrollbar(comment_frame, orient=tk.VERTICAL)
     comment_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     comment_text = tk.Text(
@@ -2250,7 +2119,7 @@ def start_gui() -> int:
 
     # Notebook for two modes: Recording and Composite
     notebook = ttk.Notebook(root)
-    notebook.grid(row=3, column=1, sticky="nsew", **padding)
+    notebook.grid(row=3, column=0, sticky="nsew", **padding)
 
     # ===== TAB 1: Recording Mode =====
     recording_tab = tk.Frame(notebook)
@@ -2423,7 +2292,7 @@ def start_gui() -> int:
     edit_tree.bind("<Double-Button-1>", on_edit_double_click)
 
     log_frame = tk.Frame(root)
-    log_frame.grid(row=4, column=1, sticky="nsew", **padding)
+    log_frame.grid(row=4, column=0, sticky="nsew", **padding)
     log_scrollbar = tk.Scrollbar(log_frame, orient=tk.VERTICAL)
     log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     log_text = tk.Text(
@@ -2437,14 +2306,14 @@ def start_gui() -> int:
     log_scrollbar.config(command=log_text.yview)
 
     status_frame = tk.Frame(root)
-    status_frame.grid(row=5, column=1, sticky="we", **padding)
+    status_frame.grid(row=5, column=0, sticky="we", **padding)
     tk.Label(status_frame, textvariable=status_var).pack(side=tk.LEFT)
     tk.Label(status_frame, textvariable=position_var).pack(side=tk.RIGHT)
     tk.Label(status_frame, textvariable=click_hint_var, fg="red", width=6).pack(side=tk.RIGHT)
 
     # ===== RIGHT COLUMN: Config List =====
     top_right_frame = tk.Frame(root)
-    top_right_frame.grid(row=0, column=2, sticky="we", **padding)
+    top_right_frame.grid(row=0, column=1, sticky="we", **padding)
     top_right_frame.grid_columnconfigure(0, weight=1)
 
     browse_folder_button = ttk.Button(
@@ -2469,7 +2338,7 @@ def start_gui() -> int:
 
     config_list_frame = tk.LabelFrame(root, text=i18n.t("config_list"), padx=4, pady=4)
     ui_elements['config_list_frame'] = (config_list_frame, 'config_list', False)
-    config_list_frame.grid(row=1, column=2, rowspan=5, sticky="nsew", **padding)
+    config_list_frame.grid(row=1, column=1, rowspan=5, sticky="nsew", **padding)
     config_list_scrollbar = tk.Scrollbar(config_list_frame, orient=tk.VERTICAL)
     config_list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     
@@ -2508,10 +2377,7 @@ def start_gui() -> int:
     composite_listbox.bind("<Double-Button-1>", on_composite_double_click)
     composite_listbox.bind("<Delete>", on_composite_delete_key)
 
-    # Bind events to OCR listboxes
-    ocr_available_listbox.bind("<Double-Button-1>", on_ocr_available_double_click)
-    ocr_active_listbox.bind("<Double-Button-1>", on_ocr_active_delete)
-    ocr_active_listbox.bind("<Delete>", on_ocr_active_delete)
+
 
     def on_hotkey_stop() -> None:
         if running:
@@ -2521,312 +2387,17 @@ def start_gui() -> int:
         if recorder.recording:
             stop_recording()
 
-    def run_goods_ocr(template_value: str) -> None:
-        if template_value in {"gudi", "wuling"}:
-            template_path = template_value
-        else:
-            template_path = get_resource_path("templates") / template_value
 
-        if recorder.recording:
-            # Add goods_ocr event to timeline with template info
-            recorder._add_event("goods_ocr", template=template_value)
-            status_var.set("Goods OCR step recorded")
-            app_logger.info(f"Recorded goods_ocr step with template: {template_value}")
 
-            # Now execute the goods_ocr operation immediately
-            # Set flag to skip recording all internal operations
-            def execute_goods_capture() -> None:
-                try:
-                    # Disable recording of all internal operations
-                    recorder._skip_recording = True
 
-                    time.sleep(0.3)
-                    result = process_goods_image(template_path=template_path)
-                    app_logger.info(
-                        "goods_ocr result: template=%s",
-                        result.get("template"),
-                    )
-                    for item_line in format_goods_ocr_items(result):
-                        app_logger.info("goods_ocr item: %s", item_line)
-
-                    # Analyze goods data and auto-click the cheapest item
-                    analysis = analyze_goods_data(result)
-                    if analysis:
-                        time.sleep(0.1)
-                        # Auto-click the cheapest item - this and any related ops won't be recorded
-                        pyautogui.click(analysis["center_x"], analysis["center_y"])
-                    else:
-                        ui_call(lambda: status_var.set("No valid goods found (no green arrows)"))
-                finally:
-                    # Re-enable recording
-                    recorder._skip_recording = False
-
-            threading.Thread(target=execute_goods_capture, daemon=True).start()
-            return
-
-        minimize_gui()
-        status_var.set("Capturing goods...")
-        app_logger.info("Starting goods capture...")
-
-        def process() -> None:
-            try:
-                time.sleep(0.8)
-                result = process_goods_image(template_path=template_path)
-                app_logger.info(f"Goods processing result: {json.dumps(result, ensure_ascii=False)}")
-                app_logger.info(
-                    "goods_ocr result: template=%s",
-                    result.get("template"),
-                )
-                for item_line in format_goods_ocr_items(result):
-                    app_logger.info("goods_ocr item: %s", item_line)
-
-                # Analyze goods data and auto-click the cheapest item
-                analysis = analyze_goods_data(result)
-                if analysis:
-                    app_logger.info(f"Found cheapest: {analysis['percent']}")
-                    ui_call(lambda: status_var.set(
-                        f"Found cheapest: {analysis['percent']} - Clicking..."
-                    ))
-                    time.sleep(0.3)
-                    # Auto-click the cheapest item
-                    pyautogui.click(analysis["center_x"], analysis["center_y"])
-                    app_logger.info(f"Clicked cheapest item at ({analysis['center_x']}, {analysis['center_y']})")
-                    ui_call(lambda: status_var.set(
-                        f"Clicked cheapest item at ({analysis['center_x']}, {analysis['center_y']})"
-                    ))
-                else:
-                    app_logger.warning("No valid goods found (no green arrows)")
-                    ui_call(lambda: status_var.set("No valid goods found (no green arrows)"))
-            except Exception as e:
-                app_logger.error(f"Error processing goods: {e}", exc_info=True)
-                ui_call(lambda: status_var.set("Error processing goods"))
-            finally:
-                ui_call(show_gui)
-
-        threading.Thread(target=process, daemon=True).start()
-
-    def on_home_assist_ocr() -> None:
-        """
-        Home Assistant OCR - screenshot recognition.
-        Recognize templates/home_use_assistance in full screenshot.
-        If confidence > 90%, click twice with 0.5s interval.
-        """
-        if recorder.recording:
-            # During recording, add home_assist_ocr event to timeline
-            recorder._add_event("home_assist_ocr")
-            status_var.set("Home Assist OCR step recorded")
-            app_logger.info("Recorded home_assist_ocr step")
-            
-            # Execute the home_assist_ocr operation immediately (inline)
-            def execute_home_assist() -> None:
-                try:
-                    # Disable recording of all internal operations
-                    recorder._skip_recording = True
-                    
-                    time.sleep(0.3)
-                    result = process_home_assistance()
-                    
-                    if result["success"]:
-                        app_logger.info(result["message"])
-                        status_var.set(f"Home Assist: Clicked at ({result['center_x']}, {result['center_y']})")
-                    else:
-                        app_logger.info(result["message"])
-                        status_var.set(f"Home Assist: {result['message']}")
-                finally:
-                    # Re-enable recording
-                    recorder._skip_recording = False
-            
-            threading.Thread(target=execute_home_assist, daemon=True).start()
-            return
-        
-        # In IDLE state, execute directly
-        minimize_gui()
-        status_var.set("Home Assist: Capturing screenshot...")
-        app_logger.info("Starting home assist OCR...")
-        
-        def process() -> None:
-            try:
-                time.sleep(0.8)
-                result = process_home_assistance()
-                
-                if result["success"]:
-                    app_logger.info(result["message"])
-                    ui_call(lambda: status_var.set(f"Home Assist: Clicked at ({result['center_x']}, {result['center_y']})"))
-                else:
-                    app_logger.info(result["message"])
-                    ui_call(lambda: status_var.set(f"Home Assist: {result['message']}"))
-            except Exception as e:
-                app_logger.error(f"Error in home assist OCR: {e}", exc_info=True)
-                ui_call(lambda: status_var.set("Home Assist: Error"))
-            finally:
-                ui_call(show_gui)
-        
-        threading.Thread(target=process, daemon=True).start()
-
-    def on_item_drag(item_id: str) -> None:
-        """Execute item drag operation."""
-        if running:
-            return
-        
-        if recorder.recording:
-            # Record the item_drag event
-            recorder._add_event("item_drag", item_id=item_id)
-            status_var.set(f"Item drag step recorded: {item_id}")
-            app_logger.info(f"Recorded item_drag step: {item_id}")
-            
-            # Execute the operation immediately
-            def execute_item_drag() -> None:
-                try:
-                    recorder._skip_recording = True
-                    time.sleep(0.3)
-                    
-                    from backpack_processor import process_item_drag
-                    result = process_item_drag(item_id)
-                    
-                    if result.get("success"):
-                        app_logger.info(f"Item drag executed: {item_id}")
-                    else:
-                        error = result.get("error", "Unknown error")
-                        app_logger.error(f"Item drag failed: {error}")
-                        ui_call(lambda: status_var.set(f"Failed: {error}"))
-                finally:
-                    recorder._skip_recording = False
-            
-            threading.Thread(target=execute_item_drag, daemon=True).start()
-            return
-        
-        minimize_gui()
-        status_var.set(f"Processing {item_id}...")
-        app_logger.info(f"Starting item drag: {item_id}")
-        
-        def process() -> None:
-            try:
-                time.sleep(0.3)
-                from backpack_processor import process_item_drag
-                
-                result = process_item_drag(item_id)
-                
-                if result.get("success"):
-                    start = result["start"]
-                    end = result["end"]
-                    confidence = result.get("confidence", 0)
-                    app_logger.info(
-                        f"Item drag completed: {item_id} from {start} to {end}, confidence={confidence:.2%}"
-                    )
-                    ui_call(lambda: status_var.set(f"Item {item_id} dragged successfully"))
-                else:
-                    error = result.get("error", "Unknown error")
-                    app_logger.error(f"Item drag failed: {error}")
-                    ui_call(lambda: status_var.set(f"Failed: {error}"))
-            except Exception as exc:
-                app_logger.error(f"Item drag failed: {exc}")
-                ui_call(messagebox.showerror, "Error", f"Item drag failed: {exc}")
-                ui_call(lambda: status_var.set("Idle"))
-            finally:
-                show_gui()
-        
-        threading.Thread(target=process, daemon=True).start()
-
-    def on_qingbao_hotkey() -> None:
-        config_path = get_resource_path("configs//情报交流//情报循环.json")
-        if not config_path.exists():
-            app_logger.error(f"Qingbao loop config not found: {config_path}")
-            ui_call(messagebox.showerror, "Error", f"Config not found: {config_path}")
-            return
-
-        if recorder.recording:
-            from automation import load_steps
-            from qingbao_processor import run_qingbao_loop
-
-            params = {
-                "config_found": "configs/情报交流/情报访问.json",
-                "config_not_found": "configs/好友/好友列表下滑.json",
-                "max_clicks": 5,
-                "max_recognitions": 20,
-                "match_threshold": 0.7,
-            }
-
-            try:
-                data = load_steps(config_path)
-                if isinstance(data, list) and data:
-                    step = data[0]
-                    if step.get("action") == "qingbao_loop":
-                        params.update(
-                            {
-                                "config_found": step.get("config_found", params["config_found"]),
-                                "config_not_found": step.get("config_not_found", params["config_not_found"]),
-                                "max_clicks": int(step.get("max_clicks", params["max_clicks"])),
-                                "max_recognitions": int(step.get("max_recognitions", params["max_recognitions"])),
-                                "match_threshold": float(step.get("match_threshold", params["match_threshold"])),
-                            }
-                        )
-            except Exception as exc:
-                app_logger.error(f"Failed to load qingbao params: {exc}")
-
-            recorder._add_event("qingbao_loop", **params)
-            status_var.set("Qingbao loop step recorded")
-            app_logger.info("Recorded qingbao_loop step")
-
-            def execute_qingbao_loop() -> None:
-                try:
-                    recorder._skip_recording = True
-                    run_qingbao_loop(**params)
-                finally:
-                    recorder._skip_recording = False
-
-            threading.Thread(target=execute_qingbao_loop, daemon=True).start()
-            return
-
-        config_var.set(str(config_path))
-        app_logger.info(f"Hotkey qingbao loop: {config_path}")
-        run_unified_config()
-
-    def run_ocr_operation(operation_id: str) -> None:
-        if operation_id == "goods_ocr_gudi":
-            run_goods_ocr("gudi")
-        elif operation_id == "goods_ocr_wuling":
-            run_goods_ocr("wuling")
-        elif operation_id == "home_assist_ocr":
-            on_home_assist_ocr()
-        elif operation_id == "qingbao_ocr":
-            on_qingbao_hotkey()
-        elif operation_id.startswith("item_"):
-            # Handle item drag operations
-            item_id = operation_id[5:]  # Remove "item_" prefix
-            on_item_drag(item_id)
-        else:
-            status_var.set(f"Unknown operation: {operation_id}")
-
-    def run_active_ocr_slot(slot_index: int) -> None:
-        if slot_index < 0 or slot_index >= len(active_ocr_operations):
-            status_var.set("OCR slot not assigned")
-            return
-        run_ocr_operation(active_ocr_operations[slot_index])
 
     def start_hotkey_listener() -> None:
-        nonlocal hotkey_listener, goods_listener
+        nonlocal hotkey_listener
         if hotkey_listener is None:
             hotkey_listener = keyboard.GlobalHotKeys(
                 {"<ctrl>+x": lambda: ui_call(on_hotkey_stop)}
             )
             hotkey_listener.start()
-        if goods_listener is None:
-            hotkeys = {
-                "<ctrl>+<shift>+1": lambda: ui_call(run_active_ocr_slot, 0),
-                "<ctrl>+<shift>+2": lambda: ui_call(run_active_ocr_slot, 1),
-                "<ctrl>+<shift>+3": lambda: ui_call(run_active_ocr_slot, 2),
-                "<ctrl>+<shift>+4": lambda: ui_call(run_active_ocr_slot, 3),
-                "<ctrl>+<shift>+5": lambda: ui_call(run_active_ocr_slot, 4),
-                "<ctrl>+<shift>+6": lambda: ui_call(run_active_ocr_slot, 5),
-                "<ctrl>+<shift>+7": lambda: ui_call(run_active_ocr_slot, 6),
-                "<ctrl>+<shift>+8": lambda: ui_call(run_active_ocr_slot, 7),
-                "<ctrl>+<shift>+9": lambda: ui_call(run_active_ocr_slot, 8),
-                "<ctrl>+<shift>+0": lambda: ui_call(run_active_ocr_slot, 9),
-            }
-            goods_listener = keyboard.GlobalHotKeys(
-                hotkeys
-            )
-            goods_listener.start()
         # Start the arrow key hook for mouse movement
         _start_arrow_worker()
         _start_arrow_key_hook()
@@ -2865,8 +2436,6 @@ def start_gui() -> int:
         should_close = True
         if hotkey_listener:
             hotkey_listener.stop()
-        if goods_listener:
-            goods_listener.stop()
         if idle_listener:
             idle_listener.stop()
         # Stop the arrow key hook

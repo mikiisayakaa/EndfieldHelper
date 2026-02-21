@@ -1,0 +1,10 @@
+{
+  "timeline": [
+    {
+      "time": 0.5,
+      "type": "goods_ocr",
+      "template": "gudi"
+    }
+  ],
+  "comment": "Goods OCR for Gudi - Recognize goods and click cheapest item"
+}

@@ -1,0 +1,17 @@
+{
+  "timeline": [
+    {
+      "time": 0.5,
+      "type": "click",
+      "x": 2224,
+      "y": 373,
+      "button": "left"
+    },
+    {
+      "time": 1.0,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": ""
+}

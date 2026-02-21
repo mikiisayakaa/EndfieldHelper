@@ -20,23 +20,15 @@ def load_steps(config_path: Path) -> dict | list:
 
 
 def save_steps(config_path: Path, steps: dict | list) -> None:
-    """Save steps to config. Supports both timeline and legacy formats."""
-    if isinstance(steps, dict):
-        # Timeline format
-        cleaned = {
-            "timeline": [
-                {k: v for k, v in event.items() if not k.startswith("_")}
-                for event in steps.get("timeline", [])
-            ],
-        }
-        data_to_save = cleaned
-    else:
-        # Legacy list format
-        cleaned_steps = []
-        for step in steps:
-            clean_step = {k: v for k, v in step.items() if not k.startswith("_")}
-            cleaned_steps.append(clean_step)
-        data_to_save = cleaned_steps
+    """Save steps to config"""
+    # Timeline format
+    cleaned = {
+        "timeline": [
+            {k: v for k, v in event.items() if not k.startswith("_")}
+            for event in steps.get("timeline", [])
+        ],
+    }
+    data_to_save = cleaned
     
     with config_path.open("w", encoding="utf-8") as handle:
         json.dump(data_to_save, handle, ensure_ascii=False, indent=2)
@@ -630,6 +622,18 @@ def run_timeline(
                 )
             except Exception as e:
                 print(f"Error executing qingbao_loop: {e}")
+        elif event_type == "plants_loop":
+            from plants_processor import run_plants_harvest_loop
+
+            try:
+                max_iterations = int(event.get("max_iterations", 8))
+                result = run_plants_harvest_loop(
+                    stop_check=stop_check,
+                    max_iterations=max_iterations,
+                )
+                print(f"plants_loop result: {result['message']}")
+            except Exception as e:
+                print(f"Error executing plants_loop: {e}")
     
     # Main thread scheduling loop
     try:
@@ -764,6 +768,19 @@ def run_step(
             match_threshold=match_threshold,
             stop_check=stop_check,
         )
+
+    elif action == "plants_loop":
+        from plants_processor import run_plants_harvest_loop
+
+        max_iterations = int(step.get("max_iterations", 8))
+        result = run_plants_harvest_loop(
+            stop_check=stop_check,
+            max_iterations=max_iterations,
+        )
+        print(f"plants_loop result: {result['message']}")
+        
+        if delay > 0:
+            _sleep_with_stop(delay, stop_check)
 
     elif action == "goods_ocr":
         result = None

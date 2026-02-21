@@ -1,0 +1,24 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\背包整理\\进入背包.json"
+    },
+    {
+      "config": "configs\\背包整理\\切换到谷地.json"
+    },
+    {
+      "config": "configs\\背包整理\\清空并切换可用道具.json"
+    },
+    {
+      "config": "configs\\OCR\\item_drag_healing_item.json"
+    },
+    {
+      "config": "configs\\OCR\\item_drag_explosive_item.json"
+    },
+    {
+      "config": "configs\\背包整理\\退出背包.json"
+    }
+  ],
+  "comment": "背包整理，先清空，然后拿回血药和爆炸物"
+}

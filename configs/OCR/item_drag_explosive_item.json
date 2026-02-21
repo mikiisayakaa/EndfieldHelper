@@ -1,0 +1,10 @@
+{
+  "timeline": [
+    {
+      "time": 0.5,
+      "type": "item_drag",
+      "item_id": "explosive_item"
+    }
+  ],
+  "comment": "Item drag - Explosive item"
+}

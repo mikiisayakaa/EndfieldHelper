@@ -1,0 +1,60 @@
+{
+  "timeline": [
+    {
+      "time": 0.766,
+      "type": "drag",
+      "start_x": 1310,
+      "start_y": 901,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.10999999998603016
+    },
+    {
+      "time": 1.562,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 1.641,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 2.875,
+      "type": "click",
+      "x": 250,
+      "y": 584,
+      "button": "left"
+    },
+    {
+      "time": 3.562,
+      "type": "click",
+      "x": 1501,
+      "y": 390,
+      "button": "left"
+    },
+    {
+      "time": 4.219,
+      "type": "click",
+      "x": 1581,
+      "y": 914,
+      "button": "left"
+    },
+    {
+      "time": 5.453,
+      "type": "click",
+      "x": 1674,
+      "y": 756,
+      "button": "left"
+    },
+    {
+      "time": 7.562,
+      "type": "click",
+      "x": 1003,
+      "y": 204,
+      "button": "left"
+    }
+  ],
+  "comment": "武陵倒货进货 - OCR前的操作"
+}

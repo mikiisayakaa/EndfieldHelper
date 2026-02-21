@@ -96,28 +96,19 @@ def find_qingbao_target(
 
 
 def _run_config(config_path: Path | str, stop_check: Callable[[], bool] | None) -> None:
-    from automation import load_steps, run_step, run_timeline
+    from automation import load_steps, run_timeline
 
     resolved_path = _resolve_config_path(config_path)
     if not resolved_path.exists():
         raise FileNotFoundError(f"Config not found: {resolved_path}")
 
     data = load_steps(resolved_path)
-    if isinstance(data, dict) and "timeline" in data:
-        run_timeline(
-            data,
-            stop_check=stop_check,
-            event_callback=None,
-            wait_for_events=True,
-        )
-        return
-
-    for step in data:
-        if stop_check and stop_check():
-            from automation import StopExecution
-
-            raise StopExecution("Stopped")
-        run_step(step, stop_check=stop_check)
+    run_timeline(
+        data,
+        stop_check=stop_check,
+        event_callback=None,
+        wait_for_events=True,
+    )
 
 
 def run_qingbao_loop(

@@ -1,0 +1,60 @@
+{
+  "timeline": [
+    {
+      "time": 0.703,
+      "type": "drag",
+      "start_x": 1285,
+      "start_y": 880,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.0779999999795109
+    },
+    {
+      "time": 1.344,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 1.406,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 2.609,
+      "type": "click",
+      "x": 261,
+      "y": 573,
+      "button": "left"
+    },
+    {
+      "time": 3.5,
+      "type": "click",
+      "x": 1097,
+      "y": 365,
+      "button": "left"
+    },
+    {
+      "time": 4.438,
+      "type": "click",
+      "x": 1468,
+      "y": 970,
+      "button": "left"
+    },
+    {
+      "time": 5.156,
+      "type": "click",
+      "x": 1715,
+      "y": 756,
+      "button": "left"
+    },
+    {
+      "time": 7.641,
+      "type": "click",
+      "x": 949,
+      "y": 198,
+      "button": "left"
+    }
+  ],
+  "comment": "谷地倒货进货 - OCR前的操作"
+}

@@ -1,7 +1,7 @@
 {
   "timeline": [
     {
-      "time": 2.64,
+      "time": 0.5,
       "type": "qingbao_loop",
       "config_found": "configs/情报交流/情报访问.json",
       "config_not_found": "configs/好友/好友列表下滑.json",
@@ -10,5 +10,5 @@
       "match_threshold": 0.7
     }
   ],
-  "comment": ""
+  "comment": "Qingbao OCR loop - Auto intelligence sharing with friends"
 }

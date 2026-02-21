@@ -1,0 +1,15 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\倒货\\谷地进入弹性物资面板.json"
+    },
+    {
+      "config": "configs\\OCR\\goods_ocr_gudi.json"
+    },
+    {
+      "config": "configs\\倒货\\拉货物进度条并退出.json"
+    }
+  ],
+  "comment": "谷地倒货进货"
+}

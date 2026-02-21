@@ -2,7 +2,7 @@
   "type": "composite",
   "configs": [
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货进货.json"
+      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货进货comp.json"
     },
     {
       "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货访问卖家.json"

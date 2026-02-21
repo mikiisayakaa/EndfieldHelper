@@ -1,0 +1,43 @@
+{
+  "timeline": [
+    {
+      "time": 1.109,
+      "type": "click",
+      "x": 1293,
+      "y": 366,
+      "button": "left"
+    },
+    {
+      "time": 2.578,
+      "type": "click",
+      "x": 1363,
+      "y": 920,
+      "button": "left"
+    },
+    {
+      "time": 3.641,
+      "type": "click",
+      "x": 1996,
+      "y": 1237,
+      "button": "left"
+    },
+    {
+      "time": 6.578,
+      "type": "click",
+      "x": 2201,
+      "y": 367,
+      "button": "left"
+    },
+    {
+      "time": 7.703,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 7.984,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": ""
+}

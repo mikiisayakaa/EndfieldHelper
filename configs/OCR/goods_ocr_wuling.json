@@ -1,0 +1,10 @@
+{
+  "timeline": [
+    {
+      "time": 0.5,
+      "type": "goods_ocr",
+      "template": "wuling"
+    }
+  ],
+  "comment": "Goods OCR for Wuling - Recognize goods and click cheapest item"
+}

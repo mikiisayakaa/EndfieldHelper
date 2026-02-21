@@ -1,0 +1,9 @@
+{
+  "timeline": [
+    {
+      "time": 0.5,
+      "type": "home_assist_ocr"
+    }
+  ],
+  "comment": "Home Assistant OCR - Template recognition and click"
+}

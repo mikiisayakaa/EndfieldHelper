@@ -1,0 +1,10 @@
+{
+  "timeline": [
+    {
+      "time": 0.5,
+      "type": "item_drag",
+      "item_id": "healing_item"
+    }
+  ],
+  "comment": "Item drag - Healing item"
+}
