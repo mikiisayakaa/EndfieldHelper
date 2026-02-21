@@ -1,0 +1,35 @@
+{
+  "timeline": [
+    {
+      "time": 1.031,
+      "type": "drag",
+      "start_x": 1245,
+      "start_y": 811,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.10899999999674037
+    },
+    {
+      "time": 2.0,
+      "type": "key_press",
+      "key": "i"
+    },
+    {
+      "time": 2.062,
+      "type": "key_release",
+      "key": "i"
+    },
+    {
+      "time": 3.25,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 3.453,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": ""
+}

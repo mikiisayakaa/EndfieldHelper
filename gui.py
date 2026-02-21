@@ -136,8 +136,28 @@ def start_gui() -> int:
     
     root = tk.Tk()
     root.title(i18n.t("app_title"))
-    root.resizable(False, False)
+    root.resizable(True, True)
     root.attributes("-topmost", True)
+    root.withdraw()
+    root.grid_columnconfigure(0, weight=1, uniform="main_columns")
+    root.grid_columnconfigure(1, weight=3, uniform="main_columns")
+    root.grid_columnconfigure(2, weight=1, uniform="main_columns")
+    root.grid_rowconfigure(3, weight=1)
+    root.grid_rowconfigure(4, weight=1)
+
+    def _sync_root_column_sizes(event=None) -> None:
+        width = root.winfo_width()
+        if width <= 1:
+            return
+        col0 = int(width * 0.2)
+        col1 = int(width * 0.6)
+        col2 = max(1, width - col0 - col1)
+        root.grid_columnconfigure(0, minsize=col0)
+        root.grid_columnconfigure(1, minsize=col1)
+        root.grid_columnconfigure(2, minsize=col2)
+
+    root.bind("<Configure>", _sync_root_column_sizes)
+    root.after(0, _sync_root_column_sizes)
 
     style = ttk.Style(root)
     try:
@@ -1087,12 +1107,16 @@ def start_gui() -> int:
         
         config_path_str = config_var.get().strip()
         if not config_path_str:
+            edit_data = None
+            edit_config_type = None
             edit_tree.delete(*edit_tree.get_children())
             edit_tree.insert("", "end", values=("", i18n.t("no_config_loaded"), ""))
             return
         
         config_path = Path(config_path_str)
         if not config_path.exists():
+            edit_data = None
+            edit_config_type = None
             edit_tree.delete(*edit_tree.get_children())
             edit_tree.insert("", "end", values=("", i18n.t("config_not_found"), ""))
             return
@@ -1105,9 +1129,184 @@ def start_gui() -> int:
             refresh_edit_tree()
             
         except Exception as e:
+            edit_data = None
+            edit_config_type = None
             app_logger.error(f"Failed to load config for editing: {e}")
             edit_tree.delete(*edit_tree.get_children())
             edit_tree.insert("", "end", values=("", "Error", str(e)))
+
+    record_type_options = [
+        "click_left",
+        "click_right",
+        "hold_left",
+        "hold_right",
+        "drag_left",
+        "drag_right",
+        "key_press",
+        "key_release",
+    ]
+
+    legacy_type_options = [
+        "click_left",
+        "click_right",
+        "drag_left",
+        "drag_right",
+        "key",
+    ]
+
+    def _configure_edit_tree_for_mode(config_type: str | None) -> None:
+        if config_type == "composite":
+            columns = ("index", "type", "details")
+            headings = {
+                "index": "Index",
+                "type": "Type",
+                "details": "Details",
+            }
+        else:
+            columns = ("time", "type", "x1", "y1", "x2", "y2", "duration", "key")
+            headings = {
+                "time": "Time",
+                "type": "Type",
+                "x1": "x1",
+                "y1": "y1",
+                "x2": "x2",
+                "y2": "y2",
+                "duration": "duration",
+                "key": "key",
+            }
+
+        edit_tree["columns"] = columns
+        for col in columns:
+            edit_tree.heading(col, text=headings.get(col, col))
+            edit_tree.column(col, anchor=tk.W, stretch=False)
+        root.after(0, _update_edit_tree_column_widths)
+
+    def _display_type_from_event(event: dict) -> str:
+        event_type = event.get("type", "")
+        if event_type in ("click", "hold", "drag"):
+            button = event.get("button", "left")
+            return f"{event_type}_{button}"
+        if event_type in ("key_press", "key_release"):
+            return event_type
+        return event_type
+
+    def _display_type_from_step(step: dict) -> str:
+        action = step.get("action", "")
+        if action in ("click", "hold", "drag"):
+            button = step.get("button", "left")
+            return f"{action}_{button}"
+        if action == "key":
+            return "key"
+        return action
+
+    def _apply_display_type_to_event(event: dict, display_type: str) -> None:
+        if display_type in ("key_press", "key_release"):
+            event["type"] = display_type
+            event.pop("button", None)
+            if "key" not in event:
+                event["key"] = ""
+            return
+
+        if "_" in display_type:
+            base, button = display_type.split("_", 1)
+        else:
+            base, button = display_type, "left"
+
+        if base in ("click", "hold", "drag"):
+            event["type"] = base
+            event["button"] = button
+            if base in ("click", "hold"):
+                if event.get("x") is None and event.get("start_x") is not None:
+                    event["x"] = event.get("start_x")
+                if event.get("y") is None and event.get("start_y") is not None:
+                    event["y"] = event.get("start_y")
+                event.setdefault("duration", 0)
+            elif base == "drag":
+                if event.get("start_x") is None and event.get("x") is not None:
+                    event["start_x"] = event.get("x")
+                if event.get("start_y") is None and event.get("y") is not None:
+                    event["start_y"] = event.get("y")
+                if event.get("end_x") is None:
+                    event["end_x"] = event.get("start_x")
+                if event.get("end_y") is None:
+                    event["end_y"] = event.get("start_y")
+                event.setdefault("duration", 0)
+
+    def _apply_display_type_to_step(step: dict, display_type: str) -> None:
+        if display_type == "key":
+            step["action"] = "key"
+            step.pop("button", None)
+            if "key" not in step:
+                step["key"] = ""
+            return
+
+        if "_" in display_type:
+            base, button = display_type.split("_", 1)
+        else:
+            base, button = display_type, "left"
+
+        if base in ("click", "hold", "drag"):
+            step["action"] = base
+            step["button"] = button
+            if base in ("click", "hold"):
+                if step.get("x") is None and step.get("start_x") is not None:
+                    step["x"] = step.get("start_x")
+                if step.get("y") is None and step.get("start_y") is not None:
+                    step["y"] = step.get("start_y")
+                step.setdefault("duration", 0)
+            elif base == "drag":
+                if step.get("start_x") is None and step.get("x") is not None:
+                    step["start_x"] = step.get("x")
+                if step.get("start_y") is None and step.get("y") is not None:
+                    step["start_y"] = step.get("y")
+                if step.get("end_x") is None:
+                    step["end_x"] = step.get("start_x")
+                if step.get("end_y") is None:
+                    step["end_y"] = step.get("start_y")
+                step.setdefault("duration", 0)
+
+    def _timeline_row_values(event: dict) -> tuple[str, str, str, str, str, str, str, str]:
+        time_str = f"{event.get('time', 0):.3f}s"
+        display_type = _display_type_from_event(event)
+        x1 = y1 = x2 = y2 = duration = key = ""
+
+        if event.get("type") in ("click", "hold"):
+            x1 = "" if event.get("x") is None else str(int(event.get("x")))
+            y1 = "" if event.get("y") is None else str(int(event.get("y")))
+            if event.get("type") == "hold":
+                duration = f"{float(event.get('duration', 0)):.3f}"
+        elif event.get("type") == "drag":
+            x1 = "" if event.get("start_x") is None else str(int(event.get("start_x")))
+            y1 = "" if event.get("start_y") is None else str(int(event.get("start_y")))
+            x2 = "" if event.get("end_x") is None else str(int(event.get("end_x")))
+            y2 = "" if event.get("end_y") is None else str(int(event.get("end_y")))
+            duration = f"{float(event.get('duration', 0)):.3f}"
+        elif event.get("type") in ("key_press", "key_release"):
+            key = str(event.get("key", ""))
+
+        return (time_str, display_type, x1, y1, x2, y2, duration, key)
+
+    def _legacy_row_values(step: dict, index: int) -> tuple[str, str, str, str, str, str, str, str]:
+        index_str = str(index)
+        display_type = _display_type_from_step(step)
+        x1 = y1 = x2 = y2 = duration = key = ""
+        action = step.get("action")
+
+        if action in ("click", "hold"):
+            x1 = "" if step.get("x") is None else str(int(step.get("x")))
+            y1 = "" if step.get("y") is None else str(int(step.get("y")))
+            if action == "hold":
+                duration = f"{float(step.get('duration', 0)):.3f}"
+        elif action == "drag":
+            x1 = "" if step.get("start_x") is None else str(int(step.get("start_x")))
+            y1 = "" if step.get("start_y") is None else str(int(step.get("start_y")))
+            x2 = "" if step.get("end_x") is None else str(int(step.get("end_x")))
+            y2 = "" if step.get("end_y") is None else str(int(step.get("end_y")))
+            duration = f"{float(step.get('duration', 0)):.3f}"
+        elif action == "key":
+            key = str(step.get("key", ""))
+
+        return (index_str, display_type, x1, y1, x2, y2, duration, key)
     
     def refresh_edit_tree() -> None:
         """Refresh the tree view using the current edit_data in memory."""
@@ -1119,10 +1318,11 @@ def start_gui() -> int:
             return
         
         edit_tree.delete(*edit_tree.get_children())
-        
+
         # Determine config type
         if isinstance(edit_data, dict) and edit_data.get("type") == "composite":
             edit_config_type = "composite"
+            _configure_edit_tree_for_mode(edit_config_type)
             # Display composite configs
             configs = edit_data.get("configs", [])
             for idx, item in enumerate(configs):
@@ -1132,23 +1332,22 @@ def start_gui() -> int:
             
         elif isinstance(edit_data, dict) and "timeline" in edit_data:
             edit_config_type = "timeline"
+            _configure_edit_tree_for_mode(edit_config_type)
             # Display timeline events
             timeline = edit_data.get("timeline", [])
             for idx, event in enumerate(timeline):
-                time_str = f"{event.get('time', 0):.3f}s"
-                event_type = event.get("type", "unknown")
-                details = format_event_details(event)
-                edit_tree.insert("", "end", values=(time_str, event_type, details), tags=("timeline",))
+                values = _timeline_row_values(event)
+                edit_tree.insert("", "end", values=values, tags=("timeline",))
             app_logger.info(f"Displayed timeline config with {len(timeline)} events")
             
         else:
             edit_config_type = "legacy"
+            _configure_edit_tree_for_mode(edit_config_type)
             # Display legacy steps
             if isinstance(edit_data, list):
                 for idx, step in enumerate(edit_data):
-                    action = step.get("action", "unknown")
-                    details = format_step_details(step)
-                    edit_tree.insert("", "end", values=(str(idx), action, details), tags=("legacy",))
+                    values = _legacy_row_values(step, idx)
+                    edit_tree.insert("", "end", values=values, tags=("legacy",))
                 app_logger.info(f"Displayed legacy config with {len(edit_data)} steps")
             else:
                 edit_tree.insert("", "end", values=("", "Error", "Unknown config format"))
@@ -1519,84 +1718,283 @@ def start_gui() -> int:
             edit_menu.post(event.x_root, event.y_root)
     
     def on_edit_double_click(event) -> None:
-        """Handle double-click to edit time field inline."""
-        # Only allow editing time for timeline configs
-        if edit_config_type != "timeline":
+        """Handle double-click to edit fields inline for recorded configs."""
+        if edit_config_type not in ("timeline", "legacy"):
             return
-        
-        # Identify what was clicked
+
         item = edit_tree.identify_row(event.y)
         column = edit_tree.identify_column(event.x)
-        
-        # Only allow editing the time column (column #1)
-        if not item or column != "#1":  # #1 is the "time" column
+        if not item or not column:
             return
-        
-        item_index = edit_tree.index(item)
-        timeline = edit_data.get("timeline", [])
-        
-        if item_index >= len(timeline):
+
+        columns = edit_tree["columns"]
+        try:
+            column_key = columns[int(column.replace("#", "")) - 1]
+        except (ValueError, IndexError):
             return
-        
-        current_event = timeline[item_index]
-        current_time = current_event.get("time", 0)
-        
-        # Get bounds for valid time
-        prev_time = timeline[item_index - 1].get("time", 0) if item_index > 0 else 0
-        next_time = timeline[item_index + 1].get("time", float('inf')) if item_index + 1 < len(timeline) else float('inf')
-        
-        # Get the bounding box of the cell
+
         bbox = edit_tree.bbox(item, column)
         if not bbox:
             return
-        
+
         x, y, width, height = bbox
-        
-        # Create an Entry widget over the cell
-        edit_entry = tk.Entry(edit_tree, width=10)
-        edit_entry.insert(0, f"{current_time:.3f}")
-        edit_entry.select_range(0, tk.END)
-        edit_entry.focus()
-        
-        # Position the entry over the cell
-        edit_entry.place(x=x, y=y, width=width, height=height)
-        
-        def save_edit():
-            try:
-                new_time_str = edit_entry.get()
-                new_time = float(new_time_str)
-                
-                # Validate the time is within bounds
-                if new_time < prev_time or new_time > next_time:
-                    # Invalid time, revert to original silently
-                    status_var.set(f"Invalid time range, reverted to {current_time:.3f}s")
-                    app_logger.info(f"Time {new_time:.3f}s out of valid range [{prev_time:.3f}s, {next_time:.3f}s], reverted")
-                    edit_entry.destroy()
+        item_index = edit_tree.index(item)
+
+        def place_entry(initial_value: str, on_save) -> None:
+            edit_entry = tk.Entry(edit_tree, width=10)
+            edit_entry.insert(0, initial_value)
+            edit_entry.select_range(0, tk.END)
+            edit_entry.focus()
+            edit_entry.place(x=x, y=y, width=width, height=height)
+
+            def save_and_close():
+                on_save(edit_entry.get())
+                edit_entry.destroy()
+
+            def cancel_edit(event=None):
+                edit_entry.destroy()
+
+            edit_entry.bind("<Return>", lambda e: save_and_close())
+            edit_entry.bind("<Escape>", cancel_edit)
+            edit_entry.bind("<FocusOut>", lambda e: save_and_close())
+
+        def place_combobox(options: list[str], current_value: str, on_save) -> None:
+            combo = ttk.Combobox(edit_tree, values=options, state="readonly")
+            if current_value in options:
+                combo.set(current_value)
+            elif options:
+                combo.set(options[0])
+            combo.focus()
+            combo.place(x=x, y=y, width=width, height=height)
+
+            def save_and_close():
+                on_save(combo.get())
+                combo.destroy()
+
+            def cancel_edit(event=None):
+                combo.destroy()
+
+            combo.bind("<<ComboboxSelected>>", lambda e: save_and_close())
+            combo.bind("<Escape>", cancel_edit)
+            combo.bind("<FocusOut>", lambda e: save_and_close())
+
+        def parse_int(value: str) -> int | None:
+            value = value.strip()
+            if not value:
+                return None
+            return int(float(value))
+
+        def parse_float(value: str) -> float | None:
+            value = value.strip()
+            if not value:
+                return None
+            return float(value)
+
+        if edit_config_type == "timeline":
+            timeline = edit_data.get("timeline", [])
+            if item_index >= len(timeline):
+                return
+            current_event = timeline[item_index]
+            current_type = current_event.get("type", "")
+
+            if column_key == "time":
+                current_time = current_event.get("time", 0)
+                prev_time = timeline[item_index - 1].get("time", 0) if item_index > 0 else 0
+                next_time = timeline[item_index + 1].get("time", float("inf")) if item_index + 1 < len(timeline) else float("inf")
+
+                def save_time(value: str) -> None:
+                    try:
+                        new_time = float(value)
+                        if new_time < prev_time or new_time > next_time:
+                            status_var.set(f"Invalid time range, reverted to {current_time:.3f}s")
+                            app_logger.info(
+                                f"Time {new_time:.3f}s out of valid range [{prev_time:.3f}s, {next_time:.3f}s], reverted"
+                            )
+                            return
+                        timeline[item_index]["time"] = round(new_time, 3)
+                        refresh_edit_tree()
+                        status_var.set(f"Updated time for step {item_index}")
+                        app_logger.info(
+                            f"Updated time for step {item_index} from {current_time:.3f}s to {new_time:.3f}s"
+                        )
+                    except ValueError:
+                        status_var.set(f"Invalid input, reverted to {current_time:.3f}s")
+                        app_logger.info(f"Invalid time input: '{value}', reverted")
+
+                place_entry(f"{current_time:.3f}", save_time)
+                return
+
+            if column_key == "type":
+                display_type = _display_type_from_event(current_event)
+
+                def save_type(new_type: str) -> None:
+                    if not new_type:
+                        return
+                    _apply_display_type_to_event(current_event, new_type)
+                    refresh_edit_tree()
+
+                place_combobox(record_type_options, display_type, save_type)
+                return
+
+            if column_key == "key" and current_type in ("key_press", "key_release"):
+                current_key = str(current_event.get("key", ""))
+
+                def save_key(value: str) -> None:
+                    current_event["key"] = value
+                    refresh_edit_tree()
+
+                place_entry(current_key, save_key)
+                return
+
+            if column_key in ("x1", "y1", "x2", "y2", "duration"):
+                allowed = False
+                if current_type in ("click", "hold"):
+                    allowed = column_key in ("x1", "y1", "duration")
+                elif current_type == "drag":
+                    allowed = column_key in ("x1", "y1", "x2", "y2", "duration")
+                if not allowed:
                     return
-                
-                # Update the time in edit_data
-                timeline[item_index]["time"] = round(new_time, 3)
-                
-                # Refresh the tree view
-                refresh_edit_tree()
-                
-                status_var.set(f"Updated time for step {item_index}")
-                app_logger.info(f"Updated time for step {item_index} from {current_time:.3f}s to {new_time:.3f}s")
-                
-            except ValueError:
-                # Invalid input, revert to original silently
-                status_var.set(f"Invalid input, reverted to {current_time:.3f}s")
-                app_logger.info(f"Invalid time input: '{edit_entry.get()}', reverted")
-            
-            edit_entry.destroy()
-        
-        def cancel_edit(event=None):
-            edit_entry.destroy()
-        
-        # Bind events
-        edit_entry.bind("<Return>", lambda e: save_edit())
-        edit_entry.bind("<Escape>", cancel_edit)
-        edit_entry.bind("<FocusOut>", lambda e: save_edit())
+
+                def current_value() -> str:
+                    if current_type in ("click", "hold"):
+                        if column_key == "x1":
+                            return "" if current_event.get("x") is None else str(int(current_event.get("x")))
+                        if column_key == "y1":
+                            return "" if current_event.get("y") is None else str(int(current_event.get("y")))
+                    if current_type == "drag":
+                        if column_key == "x1":
+                            return "" if current_event.get("start_x") is None else str(int(current_event.get("start_x")))
+                        if column_key == "y1":
+                            return "" if current_event.get("start_y") is None else str(int(current_event.get("start_y")))
+                        if column_key == "x2":
+                            return "" if current_event.get("end_x") is None else str(int(current_event.get("end_x")))
+                        if column_key == "y2":
+                            return "" if current_event.get("end_y") is None else str(int(current_event.get("end_y")))
+                    if column_key == "duration":
+                        return f"{float(current_event.get('duration', 0)):.3f}"
+                    return ""
+
+                def save_numeric(value: str) -> None:
+                    try:
+                        if column_key == "duration":
+                            parsed = parse_float(value)
+                            if parsed is None:
+                                return
+                            current_event["duration"] = round(parsed, 3)
+                        else:
+                            parsed = parse_int(value)
+                            if parsed is None:
+                                return
+                            if current_type in ("click", "hold"):
+                                if column_key == "x1":
+                                    current_event["x"] = parsed
+                                elif column_key == "y1":
+                                    current_event["y"] = parsed
+                            elif current_type == "drag":
+                                if column_key == "x1":
+                                    current_event["start_x"] = parsed
+                                elif column_key == "y1":
+                                    current_event["start_y"] = parsed
+                                elif column_key == "x2":
+                                    current_event["end_x"] = parsed
+                                elif column_key == "y2":
+                                    current_event["end_y"] = parsed
+                        refresh_edit_tree()
+                    except ValueError:
+                        status_var.set("Invalid input, reverted")
+                        app_logger.info(f"Invalid numeric input: '{value}', reverted")
+
+                place_entry(current_value(), save_numeric)
+                return
+
+        if edit_config_type == "legacy":
+            if not isinstance(edit_data, list) or item_index >= len(edit_data):
+                return
+            step = edit_data[item_index]
+            action = step.get("action", "")
+
+            if column_key == "type":
+                display_type = _display_type_from_step(step)
+
+                def save_type(new_type: str) -> None:
+                    if not new_type:
+                        return
+                    _apply_display_type_to_step(step, new_type)
+                    refresh_edit_tree()
+
+                place_combobox(legacy_type_options, display_type, save_type)
+                return
+
+            if column_key == "key" and action == "key":
+                current_key = str(step.get("key", ""))
+
+                def save_key(value: str) -> None:
+                    step["key"] = value
+                    refresh_edit_tree()
+
+                place_entry(current_key, save_key)
+                return
+
+            if column_key in ("x1", "y1", "x2", "y2", "duration"):
+                allowed = False
+                if action in ("click", "hold"):
+                    allowed = column_key in ("x1", "y1", "duration")
+                elif action == "drag":
+                    allowed = column_key in ("x1", "y1", "x2", "y2", "duration")
+                if not allowed:
+                    return
+
+                def current_value() -> str:
+                    if action in ("click", "hold"):
+                        if column_key == "x1":
+                            return "" if step.get("x") is None else str(int(step.get("x")))
+                        if column_key == "y1":
+                            return "" if step.get("y") is None else str(int(step.get("y")))
+                    if action == "drag":
+                        if column_key == "x1":
+                            return "" if step.get("start_x") is None else str(int(step.get("start_x")))
+                        if column_key == "y1":
+                            return "" if step.get("start_y") is None else str(int(step.get("start_y")))
+                        if column_key == "x2":
+                            return "" if step.get("end_x") is None else str(int(step.get("end_x")))
+                        if column_key == "y2":
+                            return "" if step.get("end_y") is None else str(int(step.get("end_y")))
+                    if column_key == "duration":
+                        return f"{float(step.get('duration', 0)):.3f}"
+                    return ""
+
+                def save_numeric(value: str) -> None:
+                    try:
+                        if column_key == "duration":
+                            parsed = parse_float(value)
+                            if parsed is None:
+                                return
+                            step["duration"] = round(parsed, 3)
+                        else:
+                            parsed = parse_int(value)
+                            if parsed is None:
+                                return
+                            if action in ("click", "hold"):
+                                if column_key == "x1":
+                                    step["x"] = parsed
+                                elif column_key == "y1":
+                                    step["y"] = parsed
+                            elif action == "drag":
+                                if column_key == "x1":
+                                    step["start_x"] = parsed
+                                elif column_key == "y1":
+                                    step["start_y"] = parsed
+                                elif column_key == "x2":
+                                    step["end_x"] = parsed
+                                elif column_key == "y2":
+                                    step["end_y"] = parsed
+                        refresh_edit_tree()
+                    except ValueError:
+                        status_var.set("Invalid input, reverted")
+                        app_logger.info(f"Invalid numeric input: '{value}', reverted")
+
+                place_entry(current_value(), save_numeric)
+                return
     
     def add_composite_step_above() -> None:
         """Add a config to the composite list above the selected item."""
@@ -1947,6 +2345,13 @@ def start_gui() -> int:
     edit_tab = tk.Frame(notebook)
     notebook.add(edit_tab, text=i18n.t("edit"))
 
+    def on_notebook_tab_changed(event) -> None:
+        selected_tab = notebook.select()
+        if selected_tab == str(edit_tab):
+            refresh_edit_view()
+
+    notebook.bind("<<NotebookTabChanged>>", on_notebook_tab_changed)
+
     # Button frame for edit operations
     edit_button_frame = tk.Frame(edit_tab)
     edit_button_frame.pack(fill=tk.X, padx=8, pady=6)
@@ -1975,23 +2380,42 @@ def start_gui() -> int:
     
     edit_list_scrollbar = tk.Scrollbar(edit_list_frame, orient=tk.VERTICAL)
     edit_list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def _update_edit_tree_column_widths() -> None:
+        columns = edit_tree["columns"]
+        if not columns:
+            return
+        total_width = edit_list_frame.winfo_width()
+        if total_width <= 1:
+            return
+        scrollbar_width = edit_list_scrollbar.winfo_width()
+        padding = 12
+        available = max(60, total_width - scrollbar_width - padding)
+        per_col = max(60, available // len(columns))
+        for col in columns:
+            edit_tree.column(col, width=per_col, stretch=False)
     
     # Create Treeview for better step display
     edit_tree = ttk.Treeview(
         edit_list_frame,
-        columns=("time", "type", "details"),
+        columns=("time", "type", "x1", "y1", "x2", "y2", "duration", "key"),
         show="headings",
         height=10,
         yscrollcommand=edit_list_scrollbar.set,
     )
     edit_tree.heading("time", text="Time")
     edit_tree.heading("type", text="Type")
-    edit_tree.heading("details", text="Details")
-    edit_tree.column("time", width=80, anchor=tk.W)
-    edit_tree.column("type", width=100, anchor=tk.W)
-    edit_tree.column("details", width=300, anchor=tk.W)
+    edit_tree.heading("x1", text="x1")
+    edit_tree.heading("y1", text="y1")
+    edit_tree.heading("x2", text="x2")
+    edit_tree.heading("y2", text="y2")
+    edit_tree.heading("duration", text="duration")
+    edit_tree.heading("key", text="key")
+    for col in edit_tree["columns"]:
+        edit_tree.column(col, anchor=tk.W, stretch=False)
     edit_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     edit_list_scrollbar.config(command=edit_tree.yview)
+    edit_list_frame.bind("<Configure>", lambda event: _update_edit_tree_column_widths())
     
     # Bind right-click context menu for edit tree
     edit_tree.bind("<Button-3>", on_edit_right_click)
@@ -2455,6 +2879,10 @@ def start_gui() -> int:
     configs_folder = Path("configs")
     if configs_folder.exists() and configs_folder.is_dir():
         load_config_folder_by_path(configs_folder)
+    root.update_idletasks()
+    half_width = max(1, root.winfo_reqwidth() // 2)
+    root.geometry(f"{half_width}x{root.winfo_reqheight()}")
+    root.deiconify()
     root.protocol("WM_DELETE_WINDOW", on_window_close)
     app_logger.info("GUI initialized, entering main loop")
     root.mainloop()

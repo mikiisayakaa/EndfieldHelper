@@ -19,8 +19,16 @@
     },
     {
       "time": 2.312,
-      "type": "key_press",
-      "key": "right"
+      "type": "click",
+      "key": "right",
+      "button": "right",
+      "end_x": 1279,
+      "end_y": 799,
+      "duration": 0.1,
+      "start_x": 0,
+      "start_y": 0,
+      "x": 0,
+      "y": 0
     },
     {
       "time": 2.812,
@@ -109,8 +117,12 @@
     },
     {
       "time": 3.328,
-      "type": "key_press",
-      "key": "right"
+      "type": "drag",
+      "key": "right",
+      "button": "right",
+      "end_x": null,
+      "end_y": null,
+      "duration": 0
     },
     {
       "time": 3.359,
