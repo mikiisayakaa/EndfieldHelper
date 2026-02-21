@@ -56,27 +56,12 @@
       "button": "left"
     },
     {
-      "time": 9.938,
-      "type": "key_press",
-      "key": "ctrl_l"
-    },
-    {
-      "time": 10.188,
-      "type": "key_press",
-      "key": "shift"
-    },
-    {
-      "time": 10.563,
-      "type": "key_press",
-      "key": "\u0013"
-    },
-    {
       "time": 10.563,
       "type": "goods_ocr",
       "template": "gudi"
     },
     {
-      "time": 21.766,
+      "time": 18.766,
       "type": "drag",
       "start_x": 1064,
       "start_y": 1086,
@@ -86,37 +71,32 @@
       "duration": 0.31299999996554106
     },
     {
-      "time": 22.797,
+      "time": 19.797,
       "type": "click",
       "x": 1939,
       "y": 1255,
       "button": "left"
     },
     {
-      "time": 24.313,
+      "time": 21.313,
       "type": "click",
       "x": 1939,
       "y": 1255,
       "button": "left"
     },
     {
-      "time": 26.109,
+      "time": 23.109,
       "type": "click",
       "x": 2470,
       "y": 47,
       "button": "left"
     },
     {
-      "time": 26.969,
+      "time": 24.0,
       "type": "click",
       "x": 2470,
       "y": 47,
       "button": "left"
-    },
-    {
-      "time": 28.281,
-      "type": "key_press",
-      "key": "\u0018"
     }
   ],
   "comment": "**购买降价幅度最高的弹性需求物资（子操作）**"

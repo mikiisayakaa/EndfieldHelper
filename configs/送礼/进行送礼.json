@@ -1,81 +1,84 @@
 {
   "timeline": [
     {
-      "time": 1.015,
+      "time": 0.984,
       "type": "drag",
-      "start_x": 434,
-      "start_y": 801,
+      "start_x": 1398,
+      "start_y": 914,
       "end_x": 1279,
       "end_y": 799,
       "button": "left",
-      "duration": 0.07799999999997453
+      "duration": 0.10900000000401633
     },
     {
-      "time": 1.703,
+      "time": 1.75,
       "type": "key_press",
       "key": "f"
     },
     {
-      "time": 1.797,
+      "time": 1.844,
       "type": "key_release",
       "key": "f"
     },
     {
-      "time": 5.234,
+      "time": 4.578,
       "type": "click",
-      "x": 1430,
-      "y": 1455,
-      "button": "left"
-    },
-    {
-      "time": 8.828,
-      "type": "click",
-      "x": 2046,
-      "y": 1036,
-      "button": "left"
-    },
-    {
-      "time": 11.906,
-      "type": "click",
-      "x": 175,
-      "y": 1284,
-      "button": "left"
-    },
-    {
-      "time": 13.484,
-      "type": "click",
-      "x": 2287,
+      "x": 1410,
       "y": 1465,
       "button": "left"
     },
     {
-      "time": 15.828,
+      "time": 6.203,
+      "type": "key_press",
+      "key": "1"
+    },
+    {
+      "time": 6.359,
+      "type": "key_release",
+      "key": "1"
+    },
+    {
+      "time": 8.313,
       "type": "click",
-      "x": 2061,
-      "y": 1507,
+      "x": 199,
+      "y": 1278,
       "button": "left"
     },
     {
-      "time": 17.5,
+      "time": 9.234,
       "type": "click",
-      "x": 2061,
-      "y": 1507,
+      "x": 2359,
+      "y": 1476,
       "button": "left"
     },
     {
-      "time": 19.453,
+      "time": 11.438,
       "type": "click",
-      "x": 2057,
-      "y": 1262,
+      "x": 1602,
+      "y": 1488,
       "button": "left"
     },
     {
-      "time": 21.984,
+      "time": 12.828,
+      "type": "click",
+      "x": 1602,
+      "y": 1488,
+      "button": "left"
+    },
+    {
+      "time": 15.563,
+      "type": "click",
+      "x": 2084,
+      "y": 1254,
+      "button": "left"
+    },
+    {
+      "time": 17.516,
       "type": "key_press",
       "key": "ctrl_l"
     },
     {
-      "time": 22.093,
+      "time": 17.641,
       "type": "key_press",
       "key": "\u0018"
     }

@@ -2,19 +2,22 @@
   "type": "composite",
   "configs": [
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\送礼\\到达干员联络台.json"
+      "config": "configs\\送礼\\到达干员联络台.json"
     },
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\送礼\\呼叫干员.json"
+      "config": "configs\\送礼\\呼叫干员.json"
     },
     {
-      "config": "D:/Projects/endfieldhelper/configs/送礼/靠近干员.json"
+      "config": "configs\\送礼\\靠近干员.json"
     },
     {
-      "config": "D:/Projects/endfieldhelper/configs/送礼/进行送礼.json"
+      "config": "configs\\送礼\\进行送礼.json"
     },
     {
-      "config": "D:/Projects/endfieldhelper/configs/送礼/回到会客室.json"
+      "config": "configs\\送礼\\进行送礼.json"
+    },
+    {
+      "config": "configs\\送礼\\回到会客室.json"
     }
   ],
   "comment": ""

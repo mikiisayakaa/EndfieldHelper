@@ -9,7 +9,7 @@ import numpy as np
 import pyautogui
 from PIL import Image, ImageGrab
 
-from ocr import compare_similarity, crop_right_fraction, load_template_bgr, pil_to_bgr, find_template_sift
+from ocr import compare_similarity, crop_right_fraction, load_template_bgr, pil_to_bgr, match_template
 
 TEMPLATE_DIR = Path("templates")
 QINGBAO_TEMPLATE = TEMPLATE_DIR / "qingbao.png"
@@ -28,11 +28,11 @@ def find_qingbao_target(
     match_threshold: float = 0.7,
 ) -> dict | None:
     """
-    Find qingbao target in screenshot using SIFT feature matching with fallback.
+    Find qingbao target in screenshot using template matching.
     
     Args:
         screenshot: Full screen PIL Image
-        match_threshold: Minimum confidence threshold (not used with SIFT but kept for compatibility)
+        match_threshold: Minimum confidence threshold for template matching
     
     Returns:
         Dict with center_x, center_y, and scores, or None if not found
@@ -45,30 +45,23 @@ def find_qingbao_target(
     if invalid_bgr is None:
         return None
 
-    # Try SIFT with lower min_matches and more lenient ratio for small templates (情报图标较小)
-    result = find_template_sift(roi_bgr, QINGBAO_TEMPLATE, min_matches=2, ratio_threshold=0.75)
-    
-    # Fallback to traditional template matching if SIFT fails
-    if result is None:
-        from ocr import match_template
-        valid_bgr = load_template_bgr(QINGBAO_TEMPLATE)
-        if valid_bgr is None:
-            return None
-        
-        confidence, (x, y) = match_template(roi_bgr, valid_bgr)
-        
-        if confidence < match_threshold:
-            return None
-        
-        # Construct result similar to SIFT output
-        h, w = valid_bgr.shape[:2]
-        result = {
-            "center_x": x + w // 2,
-            "center_y": y + h // 2,
-            "confidence": confidence,
-            "bbox": [x, y, x + w, y + h],
-        }
-        print(f"Template matching fallback: confidence={confidence:.2%}")
+    valid_bgr = load_template_bgr(QINGBAO_TEMPLATE)
+    if valid_bgr is None:
+        return None
+
+    confidence, (x, y) = match_template(roi_bgr, valid_bgr)
+
+    if confidence < match_threshold:
+        return None
+
+    h, w = valid_bgr.shape[:2]
+    result = {
+        "center_x": x + w // 2,
+        "center_y": y + h // 2,
+        "confidence": confidence,
+        "bbox": [x, y, x + w, y + h],
+    }
+    print(f"Template matching: confidence={confidence:.2%}")
 
     # Extract candidate region and compare with valid/invalid templates
     x1, y1, x2, y2 = result["bbox"]

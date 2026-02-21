@@ -7,3 +7,5 @@ numpy
 easyocr
 mouse
 ahk
+torch
+lightglue @ git+https://github.com/cvg/LightGlue.git
