@@ -12,6 +12,9 @@
     },
     {
       "config": "configs\\自动采集\\供能高地_中蘑菇\\前往采集点_供能高地_中蘑菇.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/自动采集/返回帝江号.json"
     }
   ],
   "comment": ""

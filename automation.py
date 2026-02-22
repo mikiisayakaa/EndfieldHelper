@@ -551,7 +551,7 @@ def run_timeline(
                     print(f"Error executing config_action: {e}")
         elif event_type == "goods_ocr":
             # Process goods image and auto-click the cheapest item
-            from goods_processor import (
+            from processors.goods_processor import (
                 process_goods_image,
                 analyze_goods_data,
                 format_goods_ocr_items,
@@ -584,7 +584,7 @@ def run_timeline(
                 print(f"Error executing goods_ocr: {e}")
         elif event_type == "home_assist_ocr":
             # Home Assistant OCR - recognize template and click if confidence > 90%
-            from home_assistance_processor import process_home_assistance
+            from processors.home_assistance_processor import process_home_assistance
             
             try:
                 result = process_home_assistance()
@@ -597,7 +597,7 @@ def run_timeline(
                 print(f"Error executing home_assist_ocr: {e}")
         elif event_type == "item_drag":
             try:
-                from backpack_processor import process_item_drag
+                from processors.backpack_processor import process_item_drag
                 
                 item_id = event.get("item_id")
                 if not item_id:
@@ -616,7 +616,7 @@ def run_timeline(
             except Exception as e:
                 print(f"Error executing item_drag: {e}")
         elif event_type == "qingbao_loop":
-            from qingbao_processor import run_qingbao_loop
+            from processors.qingbao_processor import run_qingbao_loop
 
             try:
                 config_found = event.get("config_found")
@@ -639,7 +639,7 @@ def run_timeline(
             except Exception as e:
                 print(f"Error executing qingbao_loop: {e}")
         elif event_type == "plants_loop":
-            from plants_processor import run_plants_harvest_loop
+            from processors.plants_processor import run_plants_harvest_loop
 
             try:
                 max_iterations = int(event.get("max_iterations", 8))
@@ -651,7 +651,7 @@ def run_timeline(
             except Exception as e:
                 print(f"Error executing plants_loop: {e}")
         elif event_type == "clues_ocr":
-            from clues_processor import process_clues_placement
+            from processors.clues_processor import process_clues_placement
 
             try:
                 confidence_threshold = float(event.get("confidence_threshold", 0.5))
@@ -787,7 +787,7 @@ def run_timeline(
             except Exception as e:
                 print(f"Error executing collection_max_ocr: {e}")
         elif event_type == "find_npc_ocr":
-            from npc_finder import find_npc_by_walking
+            from processors.npc_finder import find_npc_by_walking
 
             try:
                 confidence_threshold = float(event.get("confidence_threshold", 0.5))

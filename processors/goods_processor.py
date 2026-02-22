@@ -380,4 +380,3 @@ def format_goods_ocr_items(ocr_result: dict) -> list[str]:
             )
 
     return formatted
-

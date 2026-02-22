@@ -24,8 +24,8 @@ from automation import (
     consume_composite_break,
     clear_composite_break,
 )
-from goods_processor import process_goods_image, analyze_goods_data
-from home_assistance_processor import process_home_assistance
+from processors.goods_processor import process_goods_image, analyze_goods_data
+from processors.home_assistance_processor import process_home_assistance
 from i18n import I18n
 
 # ===== Directional Mouse Control via Arrow Keys =====

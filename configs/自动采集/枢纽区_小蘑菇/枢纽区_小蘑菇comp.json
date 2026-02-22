@@ -1,0 +1,21 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\枢纽区_小蘑菇\\地图_枢纽区_小蘑菇.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\OCR\\collection_max_ocr.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\枢纽区_小蘑菇\\前往传送点_枢纽区_小蘑菇.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\枢纽区_小蘑菇\\前往采集点_枢纽区_小蘑菇.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/自动采集/返回帝江号.json"
+    }
+  ],
+  "comment": ""
+}

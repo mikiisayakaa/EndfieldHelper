@@ -1,0 +1,36 @@
+{
+  "timeline": [
+    {
+      "time": 1.484,
+      "type": "click",
+      "x": 1611,
+      "y": 1022,
+      "button": "left"
+    },
+    {
+      "time": 2.406,
+      "type": "click",
+      "x": 1932,
+      "y": 956,
+      "button": "left"
+    },
+    {
+      "time": 3.344,
+      "type": "click",
+      "x": 2304,
+      "y": 1484,
+      "button": "left"
+    },
+    {
+      "time": 20.203,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 20.359,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": ""
+}
