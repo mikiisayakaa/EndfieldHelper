@@ -63,6 +63,13 @@ TRANSLATIONS = {
         "re_record": "Re-record",
         "insert_above": "Insert Above",
         "insert_below": "Insert Below",
+        "advance_time": "Advance Time",
+        "delay_time": "Delay Time",
+        "time_offset_title": "Adjust Timing",
+        "time_advance_message": "Enter the time to advance (in seconds):",
+        "time_delay_message": "Enter the time to delay (in seconds):",
+        "time_offset_invalid": "Invalid input. Please enter a valid number.",
+        "time_offset_success": "Applied time offset {delta}s to this and {count} following step(s)",
         "no_config_loaded": "No config loaded",
         "load_config_first": "Please load a config first",
         
@@ -152,6 +159,12 @@ TRANSLATIONS = {
         "error_home_assist": "Error - Home assist OCR error",
         "error_open_editor": "Error - Failed to open in editor: {error}",
         
+        # Warning messages
+        "overwrite_warning_title": "⚠️ WARNING: Overwrite Existing Config?",
+        "overwrite_warning_message": "The config file already exists!\n\nFile: {filename}\n\nOverwriting will permanently delete the existing config.\n\nDo you want to continue?",
+        "overwrite_composite_title": "⚠️ WARNING: Overwrite Existing Config?",
+        "overwrite_composite_message": "The config file already exists!\n\nFile: {filename}\n\nOverwriting will permanently replace it with the new composite config.\n\nDo you want to continue?",
+        
         # Other
         "overwrite": "Overwrite?",
         "choose_config_file": "Browse for config file",
@@ -217,6 +230,13 @@ TRANSLATIONS = {
         "re_record": "重新录制",
         "insert_above": "在上方插入",
         "insert_below": "在下方插入",
+        "advance_time": "提前",
+        "delay_time": "延后",
+        "time_offset_title": "调整时序",
+        "time_advance_message": "输入提前的时间(秒)：",
+        "time_delay_message": "输入延后的时间(秒)：",
+        "time_offset_invalid": "无效输入。请输入有效的数字。",
+        "time_offset_success": "已应用 {delta}s 时间偏移到此步骤及其后的 {count} 个步骤",
         "no_config_loaded": "未加载配置",
         "load_config_first": "请先加载配置",
         
@@ -292,6 +312,12 @@ TRANSLATIONS = {
         "error_process_goods": "错误 - 处理商品出错",
         "error_home_assist": "错误 - 家庭助手OCR出错",
         "error_open_editor": "错误 - 用默认编辑器打开失败: {error}",
+        
+        # Warning messages
+        "overwrite_warning_title": "⚠️ 警告：将覆盖现有配置",
+        "overwrite_warning_message": "配置文件已存在！\n\n文件：{filename}\n\n覆盖将永久删除现有配置。\n\n是否继续？",
+        "overwrite_composite_title": "⚠️ 警告：将覆盖现有配置",
+        "overwrite_composite_message": "配置文件已存在！\n\n文件：{filename}\n\n覆盖将永久替换为新的组合配置。\n\n是否继续？",
         
         # Other
         "overwrite": "覆盖?",

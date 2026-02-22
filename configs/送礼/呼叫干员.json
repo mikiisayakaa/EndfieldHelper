@@ -1,7 +1,7 @@
 {
   "timeline": [
     {
-      "time": 1.297,
+      "time": 0.29699999999999993,
       "type": "drag",
       "start_x": 714,
       "start_y": 1155,
@@ -11,45 +11,45 @@
       "duration": 0.125
     },
     {
-      "time": 2.609,
+      "time": 1.609,
       "type": "key_press",
       "key": "f"
     },
     {
-      "time": 2.703,
+      "time": 1.7029999999999998,
       "type": "key_release",
       "key": "f"
     },
     {
-      "time": 5.797,
+      "time": 2.7969999999999997,
       "type": "click",
       "x": 1865,
       "y": 1141,
       "button": "left"
     },
     {
-      "time": 6.953,
+      "time": 3.9530000000000003,
       "type": "click",
       "x": 1779,
       "y": 1043,
       "button": "left"
     },
     {
-      "time": 10.828,
+      "time": 5.827999999999999,
       "type": "click",
       "x": 1963,
       "y": 1139,
       "button": "left"
     },
     {
-      "time": 14.453,
+      "time": 6.452999999999999,
       "type": "click",
       "x": 1161,
       "y": 567,
       "button": "left"
     },
     {
-      "time": 16.187,
+      "time": 8.187000000000001,
       "type": "click",
       "x": 1986,
       "y": 1242,

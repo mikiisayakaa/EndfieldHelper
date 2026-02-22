@@ -1,15 +1,15 @@
 """
 Plants harvest loop processor - OCR-based plant harvesting automation.
 
-Workflow:
+Workflow (all within main loop):
 1. Detect empty plants using SIFT
-2. Click on empty plant if found
-3. Enter loop:
-   a. Check for harvestable plants (plants_confirm)
-   b. If found, click and continue loop
-   c. If not found, check for extractable cores (plants_extract)
-   d. If found, click, execute extract config, and continue loop
-   e. If neither found, exit loop
+2. If not found, exit loop
+3. If found, click on empty plant
+4. Check for extractable cores (plants_extract)
+   - If found, click and execute extract config
+5. Check for harvestable plants (plants_confirm) - always required
+   - If found, click and continue to next iteration
+   - If not found, exit loop
 """
 
 import logging
@@ -24,6 +24,50 @@ from automation import load_steps, run_timeline, StopExecution
 from ocr import recognize_template
 
 logger = logging.getLogger("app")
+
+
+def get_bottom_right_region(screen_image):
+    """
+    Get the bottom-right quarter of the screen (from 1/2, 1/2 to 1.0, 1.0).
+    
+    Returns:
+        tuple: (cropped_image, x_offset, y_offset)
+        - cropped_image: PIL Image of the bottom-right region
+        - x_offset: x coordinate offset to convert back to full screen
+        - y_offset: y coordinate offset to convert back to full screen
+    """
+    width, height = screen_image.size
+    x_offset = width // 2
+    y_offset = height // 2
+    
+    # Crop to bottom-right quarter
+    cropped = screen_image.crop((x_offset, y_offset, width, height))
+    
+    return cropped, x_offset, y_offset
+
+
+def recognize_in_bottom_right(screen_image, template_name, min_matches=4):
+    """
+    Recognize a template in the bottom-right quarter of the screen.
+    
+    Returns dict with coordinates adjusted to full screen, or None if not found.
+    """
+    cropped, x_offset, y_offset = get_bottom_right_region(screen_image)
+    
+    result = recognize_template(cropped, template_name, min_matches)
+    
+    if result is None:
+        return None
+    
+    # Adjust coordinates to full screen
+    result["x"] += x_offset
+    result["y"] += y_offset
+    result["x1"] += x_offset
+    result["y1"] += y_offset
+    result["x2"] += x_offset
+    result["y2"] += y_offset
+    
+    return result
 
 
 def run_plants_harvest_loop(
@@ -59,27 +103,10 @@ def run_plants_harvest_loop(
     }
     
     try:
-        # Step 1: Check for empty plants
-        logger.info("Plants harvest loop: Checking for empty plants...")
-        screen = ImageGrab.grab()
-        
-        result_empty = recognize_template(screen, "plants/plants_empty.png", min_matches=4)
-        
-        if result_empty is None:
-            logger.info("Plants harvest loop: No empty plants found, exit")
-            stats["message"] = "No empty plants found"
-            stats["success"] = True
-            return stats
-        
-        # Click on empty plant
-        click_x = result_empty["x"]
-        click_y = result_empty["y"]
-        logger.info(f"Plants harvest loop: Clicking empty plant at ({click_x}, {click_y})")
-        pyautogui.click(click_x, click_y)
-        time.sleep(0.5)
-        
-        # Step 2: Enter harvest loop
+        # Main harvest loop with integrated initialization
         iteration = 0
+        sort_executed = False  # Flag to track if sort config has been executed once
+        
         while iteration < max_iterations:
             if stop_check and stop_check():
                 raise StopExecution("Stopped by user")
@@ -90,25 +117,54 @@ def run_plants_harvest_loop(
             # Take a fresh screenshot for each iteration
             screen = ImageGrab.grab()
             
-            # Check for harvestable plants (plants_confirm)
-            result_confirm = recognize_template(screen, "plants/plants_confirm.png", min_matches=4)
+            # Step 1: Check for empty plants
+            result_empty = recognize_template(screen, "plants/plants_empty1.png", min_matches=4)
             
-            if result_confirm is not None:
-                # Harvestable plant found, click it
-                click_x = result_confirm["x"]
-                click_y = result_confirm["y"]
-                logger.info(
-                    f"Plants harvest loop [#{iteration}]: "
-                    f"Clicked confirm at ({click_x}, {click_y}), "
-                    f"confidence={result_confirm['confidence']:.1f}%"
-                )
-                pyautogui.click(click_x, click_y)
-                stats["confirm_clicks"] += 1
-                time.sleep(0.3)
-                continue
+            if result_empty is None:
+                logger.info(f"Plants harvest loop [#{iteration}]: No empty plants found, exiting loop")
+                break
             
-            # plants_confirm not found, check for extractable cores (plants_extract)
-            result_extract = recognize_template(screen, "plants/plants_extract.png", min_matches=4)
+            # Click on empty plant
+            click_x = result_empty["x"]
+            click_y = result_empty["y"]
+            logger.info(f"Plants harvest loop [#{iteration}]: Clicking empty plant at ({click_x}, {click_y})")
+            pyautogui.click(click_x, click_y)
+            time.sleep(0.3)
+            
+            # Step 1.5: Execute sort config once (only on first empty plant detected)
+            if not sort_executed:
+                logger.info(f"Plants harvest loop [#{iteration}]: Executing sort config (first time)...")
+                sort_config_path = Path("configs/帝江号收菜/切换拥有数量升序.json")
+                
+                if not sort_config_path.exists():
+                    logger.warning(f"Sort config not found: {sort_config_path}, skipping")
+                else:
+                    try:
+                        sort_steps = load_steps(sort_config_path)
+                        
+                        # Execute config timeline
+                        run_timeline(
+                            sort_steps,
+                            stop_check=stop_check,
+                            event_callback=None,
+                            wait_for_events=True,
+                        )
+                        
+                        logger.info(f"Plants harvest loop [#{iteration}]: Sort config executed successfully")
+                        sort_executed = True
+                        time.sleep(0.5)
+                    except Exception as e:
+                        logger.error(f"Plants harvest loop [#{iteration}]: Error executing sort config: {e}")
+                        # Continue even if sort config fails
+            
+            # Step 2: Check for extractable cores (plants_extract) - optional, in bottom-right corner
+            screen = ImageGrab.grab()
+            result_extract = recognize_in_bottom_right(screen, "plants/plants_extract.png", min_matches=4)
+            
+            # Apply confidence threshold
+            if result_extract is not None and result_extract["confidence"] < 90.0:
+                logger.info(f"Plants harvest loop [#{iteration}]: Extract detection confidence {result_extract['confidence']:.1f}% below threshold 90%, rejecting")
+                result_extract = None
             
             if result_extract is not None:
                 # Extractable core found, click it
@@ -133,28 +189,41 @@ def run_plants_harvest_loop(
                 steps = load_steps(config_path)
                 
                 # Execute config timeline
-                if isinstance(steps, dict) and "timeline" in steps:
-                    run_timeline(
-                        steps,
-                        stop_check=stop_check,
-                        event_callback=None,
-                        wait_for_events=True,
-                    )
-                else:
-                    # Legacy format - list of steps
-                    run_timeline(
-                        steps,
-                        stop_check=stop_check,
-                        event_callback=None,
-                        wait_for_events=True,
-                    )
+                run_timeline(
+                    steps,
+                    stop_check=stop_check,
+                    event_callback=None,
+                    wait_for_events=True,
+                )
                 
                 logger.info(f"Plants harvest loop [#{iteration}]: Extract core config completed")
+                time.sleep(1.0)
+            
+            # Step 3: Check for harvestable plants (plants_confirm) - always required, in bottom-right corner
+            screen = ImageGrab.grab()
+            result_confirm = recognize_in_bottom_right(screen, "plants/plants_confirm.png", min_matches=4)
+            
+            # Apply confidence threshold
+            if result_confirm is not None and result_confirm["confidence"] < 90.0:
+                logger.info(f"Plants harvest loop [#{iteration}]: Confirm detection confidence {result_confirm['confidence']:.1f}% below threshold 90%, rejecting")
+                result_confirm = None
+            
+            if result_confirm is not None:
+                # Harvestable plant found, click it
+                click_x = result_confirm["x"]
+                click_y = result_confirm["y"]
+                logger.info(
+                    f"Plants harvest loop [#{iteration}]: "
+                    f"Clicked confirm at ({click_x}, {click_y}), "
+                    f"confidence={result_confirm['confidence']:.1f}%"
+                )
+                pyautogui.click(click_x, click_y)
+                stats["confirm_clicks"] += 1
                 time.sleep(0.5)
                 continue
             
-            # Both confirm and extract not found, exit loop
-            logger.info(f"Plants harvest loop: No confirm or extract templates found, exiting loop")
+            # Step 4: confirm not found, exit loop
+            logger.info(f"Plants harvest loop [#{iteration}]: No confirm template found, exiting loop")
             break
         
         stats["total_iterations"] = iteration

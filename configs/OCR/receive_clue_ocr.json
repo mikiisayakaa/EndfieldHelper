@@ -1,0 +1,12 @@
+{
+  "timeline": [
+    {
+      "time": 0.0,
+      "type": "receive_clue_ocr",
+      "template1": "clues/receive_all.png",
+      "template2": "clues/invite.png",
+      "min_matches": 10
+    }
+  ],
+  "comment": "Compare receive_all.png and invite.png. Click if receive_all wins."
+}

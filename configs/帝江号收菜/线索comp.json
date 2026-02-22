@@ -1,0 +1,27 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\帝江号收菜\\进入会客室并收每日线索.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/进入接收线索.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/OCR/receive_clue_ocr.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/离开接收线索.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/OCR/clues_ocr.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/开展交流.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/离开接收线索.json"
+    }
+  ],
+  "comment": ""
+}

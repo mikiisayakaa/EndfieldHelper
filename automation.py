@@ -12,30 +12,46 @@ import pyautogui
 from pynput import keyboard, mouse
 
 
-def load_steps(config_path: Path) -> dict | list:
-    """Load steps from config. Returns dict for timeline format, list for legacy format."""
+def load_steps(config_path: Path) -> dict:
+    """Load steps from config (timeline format)."""
     with config_path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
     return data
 
 
-def save_steps(config_path: Path, steps: dict | list) -> None:
-    """Save steps to config"""
-    # Timeline format
+def save_steps(config_path: Path, steps: dict) -> None:
+    """Save steps to config (timeline format)"""
     cleaned = {
         "timeline": [
             {k: v for k, v in event.items() if not k.startswith("_")}
             for event in steps.get("timeline", [])
         ],
     }
-    data_to_save = cleaned
     
     with config_path.open("w", encoding="utf-8") as handle:
-        json.dump(data_to_save, handle, ensure_ascii=False, indent=2)
+        json.dump(cleaned, handle, ensure_ascii=False, indent=2)
 
 
 class StopExecution(Exception):
     pass
+
+
+COMPOSITE_BREAK_EVENT = threading.Event()
+
+
+def request_composite_break() -> None:
+    COMPOSITE_BREAK_EVENT.set()
+
+
+def consume_composite_break() -> bool:
+    if COMPOSITE_BREAK_EVENT.is_set():
+        COMPOSITE_BREAK_EVENT.clear()
+        return True
+    return False
+
+
+def clear_composite_break() -> None:
+    COMPOSITE_BREAK_EVENT.clear()
 
 
 class Recorder:
@@ -634,6 +650,160 @@ def run_timeline(
                 print(f"plants_loop result: {result['message']}")
             except Exception as e:
                 print(f"Error executing plants_loop: {e}")
+        elif event_type == "clues_ocr":
+            from clues_processor import process_clues_placement
+
+            try:
+                confidence_threshold = float(event.get("confidence_threshold", 0.5))
+                min_matches = int(event.get("min_matches", 10))
+                
+                result = process_clues_placement(
+                    confidence_threshold=confidence_threshold,
+                    min_matches=min_matches,
+                    stop_check=stop_check,
+                )
+                
+                print(f"clues_ocr result: {result['message']}")
+            except Exception as e:
+                print(f"Error executing clues_ocr: {e}")
+        elif event_type == "receive_clue_ocr":
+            from ocr import recognize_compare_two_templates
+
+            try:
+                template1 = event.get("template1", "clues/receive_all.png")
+                template2 = event.get("template2", "clues/invite.png")
+                min_matches = int(event.get("min_matches", 10))
+                
+                screenshot = pyautogui.screenshot()
+                result = recognize_compare_two_templates(
+                    screenshot,
+                    template1,
+                    template2,
+                    min_matches=min_matches,
+                )
+                
+                if result and result["success"] and result["winner"] == "template1":
+                    # Click at the recognized position
+                    center_x = result["center_x"]
+                    center_y = result["center_y"]
+                    print(f"receive_clue_ocr: Clicking at ({center_x}, {center_y})")
+                    pyautogui.click(center_x, center_y)
+                else:
+                    print(f"receive_clue_ocr: {result['message'] if result else 'No match found'}")
+            except Exception as e:
+                print(f"Error executing receive_clue_ocr: {e}")
+        elif event_type == "gift_choice_ocr":
+            from ocr import recognize_compare_two_templates
+
+            try:
+                template1 = event.get("template1", "gifts/receive_gift.png")
+                template2 = event.get("template2", "gifts/send_gift.png")
+                min_matches = int(event.get("min_matches", 10))
+                config_if_template1 = event.get("config_if_template1")
+                config_if_template2 = event.get("config_if_template2")
+                
+                screenshot = pyautogui.screenshot()
+                result = recognize_compare_two_templates(
+                    screenshot,
+                    template1,
+                    template2,
+                    min_matches=min_matches,
+                )
+                
+                if result and result["winner"] == "template1":
+                    # Template1 (receive_gift) wins, execute config_if_template1
+                    print(f"gift_choice_ocr: {result['message']}, executing {config_if_template1}")
+                    if config_if_template1:
+                        config_path = Path(config_if_template1)
+                        if config_path.exists():
+                            steps = load_steps(config_path)
+                            run_timeline(
+                                steps,
+                                stop_check=stop_check,
+                                event_callback=event_callback,
+                                wait_for_events=wait_for_events,
+                            )
+                        else:
+                            print(f"gift_choice_ocr: Config not found: {config_path}")
+                elif result and result["winner"] == "template2":
+                    # Template2 (send_gift) wins, execute config_if_template2
+                    print(f"gift_choice_ocr: {result['message']}, executing {config_if_template2}")
+                    if config_if_template2:
+                        config_path = Path(config_if_template2)
+                        if config_path.exists():
+                            steps = load_steps(config_path)
+                            run_timeline(
+                                steps,
+                                stop_check=stop_check,
+                                event_callback=event_callback,
+                                wait_for_events=wait_for_events,
+                            )
+                        else:
+                            print(f"gift_choice_ocr: Config not found: {config_path}")
+                else:
+                    print(f"gift_choice_ocr: No match found or comparison failed")
+            except Exception as e:
+                print(f"Error executing gift_choice_ocr: {e}")
+        elif event_type == "collection_max_ocr":
+            from ocr import recognize_compare_two_templates
+
+            try:
+                template_full = event.get("template_full", "collection_max.png")
+                template_not_full = event.get("template_not_full", "collection_notmax.png")
+                min_matches = int(event.get("min_matches", 10))
+
+                screenshot = pyautogui.screenshot()
+                result = recognize_compare_two_templates(
+                    screenshot,
+                    template_full,
+                    template_not_full,
+                    min_matches=min_matches,
+                )
+
+                is_full = False
+                if result is not None:
+                    full_conf = float(result.get("confidence1", 0.0))
+                    not_full_conf = float(result.get("confidence2", 0.0))
+                    is_full = full_conf > not_full_conf
+                    print(
+                        f"collection_max_ocr: full={full_conf:.1f}%, "
+                        f"not_full={not_full_conf:.1f}%"
+                    )
+                else:
+                    print("collection_max_ocr: Comparison failed")
+
+                pyautogui.keyDown("esc")
+                time.sleep(0.05)
+                pyautogui.keyUp("esc")
+
+                if not is_full:
+                    pyautogui.keyDown("esc")
+                    time.sleep(0.05)
+                    pyautogui.keyUp("esc")
+                    request_composite_break()
+                    print("collection_max_ocr: Not full, requested composite stop")
+                else:
+                    print("collection_max_ocr: Full, continuing")
+            except Exception as e:
+                print(f"Error executing collection_max_ocr: {e}")
+        elif event_type == "find_npc_ocr":
+            from npc_finder import find_npc_by_walking
+
+            try:
+                confidence_threshold = float(event.get("confidence_threshold", 0.5))
+                min_matches = int(event.get("min_matches", 10))
+                
+                result = find_npc_by_walking(
+                    confidence_threshold=confidence_threshold,
+                    min_matches=min_matches,
+                    max_steps=9,
+                    stop_check=stop_check,
+                )
+                
+                print(f"find_npc_ocr result: {result['message']}")
+            except Exception as e:
+                print(f"Error executing find_npc_ocr: {e}")
+
     
     # Main thread scheduling loop
     try:
@@ -673,216 +843,3 @@ def run_timeline(
                             kb_ctrl.release(key_obj)
                     except Exception:
                         pass
-
-
-
-def run_step(
-    step: dict,
-    stop_check: Callable[[], bool] | None = None,
-) -> dict | None:
-    """Run a single step. Returns result dict for goods_ocr action, None otherwise."""
-    name = step.get("name", "(unnamed)")
-    action = step.get("action")
-    delay = float(step.get("delay", 0))
-
-    if stop_check and stop_check():
-        raise StopExecution("Stopped")
-
-    if action == "click":
-        x = step.get("x")
-        y = step.get("y")
-        if x is None or y is None:
-            raise ValueError(f"Step '{name}' missing x/y for click.")
-        button = step.get("button", "left")
-        clicks = int(step.get("clicks", 1))
-        interval = float(step.get("interval", 0.0))
-        _mouse_click(x=x, y=y, clicks=clicks, interval=interval, button=button)
-
-    elif action == "key":
-        key = step.get("key")
-        if not key:
-            raise ValueError(f"Step '{name}' missing key for key action.")
-        
-        # Support both old format (presses/interval) and new format (duration)
-        duration = float(step.get("duration", 0.0))
-        if duration > 0:
-            # New format: hold key for specified duration
-            presses = int(step.get("presses", 1))
-            interval = float(step.get("interval", 0.0))
-            for _ in range(presses):
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                # Use pynput to press and hold key
-                from pynput.keyboard import Controller, Key
-                controller = Controller()
-                _hold_key_for_duration(controller, key, duration, stop_check)
-                _move_for_arrow_key(key)
-                if interval > 0:
-                    _sleep_with_stop(interval, stop_check)
-        else:
-            # Old format: simple key press
-            presses = int(step.get("presses", 1))
-            interval = float(step.get("interval", 0.0))
-            for _ in range(presses):
-                if stop_check and stop_check():
-                    raise StopExecution("Stopped")
-                pyautogui.press(key)
-                _move_for_arrow_key(key)
-                if interval > 0:
-                    _sleep_with_stop(interval, stop_check)
-
-    elif action == "sleep":
-        seconds = float(step.get("seconds", 0))
-        _sleep_with_stop(seconds, stop_check)
-
-    elif action == "drag":
-        start_x = step.get("start_x")
-        start_y = step.get("start_y")
-        end_x = step.get("end_x")
-        end_y = step.get("end_y")
-        if None in (start_x, start_y, end_x, end_y):
-            raise ValueError(f"Step '{name}' missing drag coordinates.")
-        duration = float(step.get("duration", 0.0))
-        button = step.get("button", "left")
-        if stop_check and stop_check():
-            raise StopExecution("Stopped")
-        _mouse_drag(start_x, start_y, end_x, end_y, duration=duration, button=button)
-
-    elif action == "qingbao_loop":
-        from qingbao_processor import run_qingbao_loop
-
-        config_found = step.get("config_found")
-        config_not_found = step.get("config_not_found")
-        max_clicks = int(step.get("max_clicks", 5))
-        max_recognitions = int(step.get("max_recognitions", 20))
-        match_threshold = float(step.get("match_threshold", 0.7))
-
-        if not config_found or not config_not_found:
-            raise ValueError(f"Step '{name}' missing config_found/config_not_found")
-
-        run_qingbao_loop(
-            config_found=config_found,
-            config_not_found=config_not_found,
-            max_clicks=max_clicks,
-            max_recognitions=max_recognitions,
-            match_threshold=match_threshold,
-            stop_check=stop_check,
-        )
-
-    elif action == "plants_loop":
-        from plants_processor import run_plants_harvest_loop
-
-        max_iterations = int(step.get("max_iterations", 8))
-        result = run_plants_harvest_loop(
-            stop_check=stop_check,
-            max_iterations=max_iterations,
-        )
-        print(f"plants_loop result: {result['message']}")
-        
-        if delay > 0:
-            _sleep_with_stop(delay, stop_check)
-
-    elif action == "goods_ocr":
-        result = None
-        from goods_processor import (
-            process_goods_image,
-            analyze_goods_data,
-            format_goods_ocr_items,
-        )
-
-        result = process_goods_image()
-        logger = logging.getLogger("app")
-        logger.info(
-            "goods_ocr result: template=%s",
-            result.get("template"),
-        )
-        for item_line in format_goods_ocr_items(result):
-            logger.info("goods_ocr item: %s", item_line)
-        
-        # Analyze and perform action based on result
-        analysis = analyze_goods_data(result)
-        if analysis:
-            # Found optimal item (green arrow with max percent), click on it
-            center_x = analysis["center_x"]
-            center_y = analysis["center_y"]
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            print(f"goods_ocr: Clicking at ({center_x}, {center_y}) - {analysis['percent']}")
-            _mouse_click(center_x, center_y)
-            
-            # Execute follow-up actions after successful click
-            # 1. Drag from (1057, 1086) to (1385, 1086) with 0.3s duration
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            print(f"goods_ocr: Dragging from (1057, 1086) to (1385, 1086)")
-            _mouse_drag(1057, 1086, 1385, 1086, duration=0.3, button="left")
-            _sleep_with_stop(0.3, stop_check)
-            
-            # 2. Click at (1972, 1254)
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            print(f"goods_ocr: Clicking at (1972, 1254)")
-            _mouse_click(1972, 1254)
-            _sleep_with_stop(0.8, stop_check)
-            
-            # 3. Click at (1972, 1254) again
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            print(f"goods_ocr: Clicking at (1972, 1254) again")
-            _mouse_click(1972, 1254)
-        else:
-            # No optimal item found, sleep instead
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            print(f"goods_ocr: No optimal item found, sleeping 0.5s")
-            _sleep_with_stop(0.5, stop_check)
-        
-        if delay > 0:
-            _sleep_with_stop(delay, stop_check)
-        return result
-
-    elif action == "home_assist_ocr":
-        result = None
-        from home_assistance_processor import process_home_assistance
-        
-        result = process_home_assistance(stop_check=stop_check)
-        
-        if result["success"]:
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            print(f"home_assist_ocr: {result['message']}")
-        else:
-            print(f"home_assist_ocr: {result['message']}")
-        
-        if delay > 0:
-            _sleep_with_stop(delay, stop_check)
-        return result
-
-    elif action == "config":
-        config_path_str = step.get("config")
-        if not config_path_str:
-            raise ValueError(f"Step '{name}' missing config path for config action.")
-        
-        config_path = Path(config_path_str)
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
-        
-        print(f"Loading nested config: {config_path}")
-        nested_steps = load_steps(config_path)
-        
-        # Execute all nested steps
-        for nested_step in nested_steps:
-            if stop_check and stop_check():
-                raise StopExecution("Stopped")
-            result = run_step(nested_step, stop_check=stop_check)
-        
-        if delay > 0:
-            _sleep_with_stop(delay, stop_check)
-        return None
-
-    else:
-        raise ValueError(f"Step '{name}' has unknown action: {action}")
-
-    if delay > 0:
-        _sleep_with_stop(delay, stop_check)
-    return None

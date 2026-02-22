@@ -1,0 +1,12 @@
+{
+  "timeline": [
+    {
+      "time": 0.0,
+      "type": "collection_max_ocr",
+      "template_full": "collection_max.png",
+      "template_not_full": "collection_notmax.png",
+      "min_matches": 10
+    }
+  ],
+  "comment": "Check if collection is full. ESC once if full; ESC twice and stop composite if not."
+}

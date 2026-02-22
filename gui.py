@@ -4,7 +4,7 @@ import threading
 import time
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, simpledialog
 import sys
 import webbrowser
 import os
@@ -16,7 +16,14 @@ import pyautogui
 from pynput import keyboard, mouse
 from PIL import Image, ImageTk
 
-from automation import Recorder, StopExecution, load_steps, save_steps
+from automation import (
+    Recorder,
+    StopExecution,
+    load_steps,
+    save_steps,
+    consume_composite_break,
+    clear_composite_break,
+)
 from goods_processor import process_goods_image, analyze_goods_data
 from home_assistance_processor import process_home_assistance
 from i18n import I18n
@@ -464,8 +471,10 @@ def start_gui() -> int:
         # Check if file exists and ask for overwrite confirmation
         if config_path.exists():
             overwrite = messagebox.askyesno(
-                "Overwrite?",
-                "Config already exists. Overwrite?",
+                i18n.t("overwrite_composite_title"),
+                i18n.t("overwrite_composite_message", filename=config_path.name),
+                icon='warning',
+                default='no'
             )
             if not overwrite:
                 return
@@ -611,6 +620,9 @@ def start_gui() -> int:
                         depth + 1,
                         wait_for_timeline=True,
                     )
+                    if consume_composite_break():
+                        ui_call(append_log_line, f"{indent}Composite stopped by collection check")
+                        break
 
         log_text.config(state=tk.NORMAL)
         log_text.delete("1.0", tk.END)
@@ -641,6 +653,7 @@ def start_gui() -> int:
         def execute() -> None:
             try:
                 pyautogui.FAILSAFE = True
+                clear_composite_break()
                 ui_call(status_var.set, "Running config...")
                 execute_config_recursive(config_path, wait_for_timeline=True)
                 ui_call(status_var.set, "Run complete.")
@@ -1269,12 +1282,13 @@ def start_gui() -> int:
         else:
             edit_config_type = "legacy"
             _configure_edit_tree_for_mode(edit_config_type)
-            # Display legacy steps
-            if isinstance(edit_data, list):
-                for idx, step in enumerate(edit_data):
+            # Display legacy steps - now only supports dict format with 'steps' field
+            if isinstance(edit_data, dict) and "steps" in edit_data:
+                steps = edit_data.get("steps", [])
+                for idx, step in enumerate(steps):
                     values = _legacy_row_values(step, idx)
                     edit_tree.insert("", "end", values=values, tags=("legacy",))
-                app_logger.info(f"Displayed legacy config with {len(edit_data)} steps")
+                app_logger.info(f"Displayed legacy config with {len(steps)} steps")
             else:
                 edit_tree.insert("", "end", values=("", "Error", "Unknown config format"))
         
@@ -1337,6 +1351,59 @@ def start_gui() -> int:
 
 
     
+    def apply_time_offset(delta: float) -> None:
+        """Apply time offset to the selected step and all following steps."""
+        nonlocal edit_data
+        
+        selection = edit_tree.selection()
+        if not selection:
+            return
+        
+        item = selection[0]
+        item_index = edit_tree.index(item)
+        
+        if edit_config_type not in ("timeline", "legacy"):
+            return
+        
+        timeline = edit_data.get("timeline", [])
+        if item_index < 0 or item_index >= len(timeline):
+            return
+        
+        # Apply offset to this step and all following steps
+        affected_count = 0
+        for i in range(item_index, len(timeline)):
+            timeline[i]["time"] = max(0, timeline[i]["time"] + delta)  # Ensure time doesn't go below 0
+            affected_count += 1
+        
+        # Refresh the display
+        refresh_edit_tree()
+        app_logger.info(f"Applied time offset {delta}s to {affected_count} step(s)")
+        status_var.set(i18n.t("time_offset_success", delta=f"{delta:+.3f}", count=affected_count - 1))
+    
+    def on_advance_time() -> None:
+        """Show dialog to advance time."""
+        response = simpledialog.askfloat(
+            i18n.t("time_offset_title"),
+            i18n.t("time_advance_message"),
+            parent=root,
+            minvalue=0.0
+        )
+        if response is not None:
+            # Advance means subtract from time
+            apply_time_offset(-response)
+    
+    def on_delay_time() -> None:
+        """Show dialog to delay time."""
+        response = simpledialog.askfloat(
+            i18n.t("time_offset_title"),
+            i18n.t("time_delay_message"),
+            parent=root,
+            minvalue=0.0
+        )
+        if response is not None:
+            # Delay means add to time
+            apply_time_offset(response)
+    
     def delete_edit_step() -> None:
         """Delete the selected step from the edit view."""
         nonlocal edit_data
@@ -1366,12 +1433,14 @@ def start_gui() -> int:
                 status_var.set("Deleted timeline event")
                 
         elif edit_config_type == "legacy":
-            # Remove from legacy steps
-            if isinstance(edit_data, list) and 0 <= item_index < len(edit_data):
-                removed = edit_data.pop(item_index)
-                edit_tree.delete(item)
-                app_logger.info(f"Deleted legacy step: {removed}")
-                status_var.set("Deleted legacy step")
+            # Remove from legacy steps (dict format with 'steps' field)
+            if isinstance(edit_data, dict) and "steps" in edit_data:
+                steps = edit_data.get("steps", [])
+                if 0 <= item_index < len(steps):
+                    removed = steps.pop(item_index)
+                    edit_tree.delete(item)
+                    app_logger.info(f"Deleted legacy step: {removed}")
+                    status_var.set("Deleted legacy step")
     
     def adjust_timeline_after_deletion(deleted_index: int) -> None:
         """Adjust timeline after deleting an event."""
@@ -1551,26 +1620,27 @@ def start_gui() -> int:
             # For legacy format, convert timeline events to legacy steps
             legacy_steps = [convert_timeline_to_legacy_step(event) for event in recorded_events]
             
-            if isinstance(edit_data, list):
+            if isinstance(edit_data, dict) and "steps" in edit_data:
+                steps = edit_data.get("steps", [])
                 if re_recording_mode == "re-record":
                     # Replace the old step with new ones
-                    if 0 <= re_recording_step_index < len(edit_data):
-                        edit_data.pop(re_recording_step_index)
+                    if 0 <= re_recording_step_index < len(steps):
+                        steps.pop(re_recording_step_index)
                         for i, step in enumerate(legacy_steps):
-                            edit_data.insert(re_recording_step_index + i, step)
+                            steps.insert(re_recording_step_index + i, step)
                         app_logger.info(f"Re-recorded step {re_recording_step_index} with {len(legacy_steps)} steps")
                         
                 elif re_recording_mode == "insert-above":
                     # Insert new steps above
                     for i, step in enumerate(legacy_steps):
-                        edit_data.insert(re_recording_step_index + i, step)
+                        steps.insert(re_recording_step_index + i, step)
                     app_logger.info(f"Inserted {len(legacy_steps)} steps above step {re_recording_step_index}")
                         
                 elif re_recording_mode == "insert-below":
                     # Insert new steps below
                     insert_position = re_recording_step_index + 1
                     for i, step in enumerate(legacy_steps):
-                        edit_data.insert(insert_position + i, step)
+                        steps.insert(insert_position + i, step)
                     app_logger.info(f"Inserted {len(legacy_steps)} steps below step {re_recording_step_index}")
         
         # Reset re-recording state
@@ -1630,6 +1700,9 @@ def start_gui() -> int:
                 edit_menu.add_command(label=i18n.t("re_record"), command=lambda: start_re_recording("re-record"))
                 edit_menu.add_command(label=i18n.t("insert_above"), command=lambda: start_re_recording("insert-above"))
                 edit_menu.add_command(label=i18n.t("insert_below"), command=lambda: start_re_recording("insert-below"))
+                edit_menu.add_separator()
+                edit_menu.add_command(label=i18n.t("advance_time"), command=lambda: on_advance_time())
+                edit_menu.add_command(label=i18n.t("delay_time"), command=lambda: on_delay_time())
                 edit_menu.add_separator()
                 edit_menu.add_command(label=i18n.t("delete_step"), command=lambda: delete_edit_step())
             
@@ -1826,9 +1899,12 @@ def start_gui() -> int:
                 return
 
         if edit_config_type == "legacy":
-            if not isinstance(edit_data, list) or item_index >= len(edit_data):
+            if not isinstance(edit_data, dict) or "steps" not in edit_data:
                 return
-            step = edit_data[item_index]
+            steps = edit_data.get("steps", [])
+            if item_index >= len(steps):
+                return
+            step = steps[item_index]
             action = step.get("action", "")
 
             if column_key == "type":
@@ -1982,13 +2058,15 @@ def start_gui() -> int:
         app_logger.info(f"Starting recording to: {config_path}")
         if config_path.exists():
             overwrite = messagebox.askyesno(
-                i18n.t("overwrite"),
-                i18n.t("config_exists"),
+                i18n.t("overwrite_warning_title"),
+                i18n.t("overwrite_warning_message", filename=config_path.name),
+                icon='warning',
+                default='no'
             )
             if not overwrite:
                 return
             try:
-                save_steps(config_path, [])
+                save_steps(config_path, {"timeline": []})
             except OSError as exc:
                 messagebox.showerror(i18n.t("error"), i18n.t("error_clear_config", error=str(exc)))
                 return
@@ -2026,8 +2104,7 @@ def start_gui() -> int:
             return
         
         # Add comment to data (from text box, not var)
-        if isinstance(data, dict):
-            data["comment"] = comment_text.get("1.0", tk.END).rstrip()
+        data["comment"] = comment_text.get("1.0", tk.END).rstrip()
         
         try:
             save_steps(config_path, data)
@@ -2036,10 +2113,7 @@ def start_gui() -> int:
             app_logger.error(f"Failed to save recording: {exc}")
         else:
             # Count items for status message
-            if isinstance(data, dict):
-                step_count = len(data.get("timeline", []))
-            else:
-                step_count = len(data)
+            step_count = len(data.get("timeline", []))
             status_var.set(i18n.t("recording_saved", count=step_count, path=config_path))
             app_logger.info(f"Recording stopped. Saved {step_count} steps to {config_path}")
         set_controls(False, running)

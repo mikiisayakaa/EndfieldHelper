@@ -15,12 +15,12 @@
       "button": "left"
     },
     {
-      "time": 3.719,
+      "time": 2.719,
       "type": "key_press",
       "key": "ctrl_l"
     },
     {
-      "time": 3.891,
+      "time": 3.0,
       "type": "key_press",
       "key": "\u0018"
     }

@@ -1,0 +1,14 @@
+{
+  "timeline": [
+    {
+      "time": 0.0,
+      "type": "gift_choice_ocr",
+      "template1": "gifts/receive_gift.png",
+      "template2": "gifts/send_gift.png",
+      "min_matches": 10,
+      "config_if_template1": "configs/送礼/收下礼物.json",
+      "config_if_template2": "configs/送礼/赠送礼物.json"
+    }
+  ],
+  "comment": "Compare receive_gift and send_gift. Execute different config based on which wins."
+}

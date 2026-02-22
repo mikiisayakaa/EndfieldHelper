@@ -1,3 +1,379 @@
 {
+  "timeline": [
+    {
+      "time": 0.938,
+      "type": "drag",
+      "start_x": 1302,
+      "start_y": 887,
+      "end_x": 1279,
+      "end_y": 799,
+      "button": "left",
+      "duration": 0.11000000000058208
+    },
+    {
+      "time": 1.719,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 1.828,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 3.25,
+      "type": "click",
+      "x": 335,
+      "y": 613,
+      "button": "left"
+    },
+    {
+      "time": 3.828,
+      "type": "click",
+      "x": 1091,
+      "y": 374,
+      "button": "left"
+    },
+    {
+      "time": 4.469,
+      "type": "click",
+      "x": 1478,
+      "y": 921,
+      "button": "left"
+    },
+    {
+      "time": 5.078,
+      "type": "click",
+      "x": 2165,
+      "y": 774,
+      "button": "left"
+    },
+    {
+      "time": 6.047,
+      "type": "click",
+      "x": 505,
+      "y": 954,
+      "button": "left"
+    },
+    {
+      "time": 7.485,
+      "type": "click",
+      "x": 2215,
+      "y": 1460,
+      "button": "left"
+    },
+    {
+      "time": 8.578,
+      "type": "click",
+      "x": 2323,
+      "y": 364,
+      "button": "left"
+    },
+    {
+      "time": 9.485,
+      "type": "click",
+      "x": 2309,
+      "y": 1499,
+      "button": "left"
+    },
+    {
+      "time": 10.625,
+      "type": "click",
+      "x": 2309,
+      "y": 1499,
+      "button": "left"
+    },
+    {
+      "time": 11.719,
+      "type": "click",
+      "x": 2309,
+      "y": 1499,
+      "button": "left"
+    },
+    {
+      "time": 12.578,
+      "type": "click",
+      "x": 2309,
+      "y": 1499,
+      "button": "left"
+    },
+    {
+      "time": 14.031,
+      "type": "key_press",
+      "key": "j"
+    },
+    {
+      "time": 14.078,
+      "type": "key_release",
+      "key": "j"
+    },
+    {
+      "time": 15.344,
+      "type": "click",
+      "x": 998,
+      "y": 1473,
+      "button": "left"
+    },
+    {
+      "time": 15.891,
+      "type": "click",
+      "x": 1485,
+      "y": 978,
+      "button": "left"
+    },
+    {
+      "time": 17.485,
+      "type": "click",
+      "x": 1279,
+      "y": 800,
+      "button": "left"
+    },
+    {
+      "time": 17.797,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 17.906,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 19.953,
+      "type": "click",
+      "x": 292,
+      "y": 584,
+      "button": "left"
+    },
+    {
+      "time": 20.61,
+      "type": "click",
+      "x": 1140,
+      "y": 314,
+      "button": "left"
+    },
+    {
+      "time": 21.406,
+      "type": "click",
+      "x": 1526,
+      "y": 940,
+      "button": "left"
+    },
+    {
+      "time": 22.36,
+      "type": "click",
+      "x": 2096,
+      "y": 774,
+      "button": "left"
+    },
+    {
+      "time": 23.328,
+      "type": "click",
+      "x": 1017,
+      "y": 862,
+      "button": "left"
+    },
+    {
+      "time": 24.219,
+      "type": "click",
+      "x": 2276,
+      "y": 1514,
+      "button": "left"
+    },
+    {
+      "time": 25.297,
+      "type": "click",
+      "x": 2334,
+      "y": 369,
+      "button": "left"
+    },
+    {
+      "time": 26.203,
+      "type": "click",
+      "x": 2353,
+      "y": 1500,
+      "button": "left"
+    },
+    {
+      "time": 27.25,
+      "type": "click",
+      "x": 2013,
+      "y": 1245,
+      "button": "left"
+    },
+    {
+      "time": 28.391,
+      "type": "click",
+      "x": 2293,
+      "y": 1467,
+      "button": "left"
+    },
+    {
+      "time": 29.156,
+      "type": "click",
+      "x": 2276,
+      "y": 1375,
+      "button": "left"
+    },
+    {
+      "time": 31.391,
+      "type": "key_press",
+      "key": "j"
+    },
+    {
+      "time": 31.469,
+      "type": "key_release",
+      "key": "j"
+    },
+    {
+      "time": 32.672,
+      "type": "click",
+      "x": 975,
+      "y": 1502,
+      "button": "left"
+    },
+    {
+      "time": 33.422,
+      "type": "click",
+      "x": 1516,
+      "y": 1032,
+      "button": "left"
+    },
+    {
+      "time": 34.906,
+      "type": "click",
+      "x": 1279,
+      "y": 799,
+      "button": "left"
+    },
+    {
+      "time": 35.156,
+      "type": "key_press",
+      "key": "y"
+    },
+    {
+      "time": 35.25,
+      "type": "key_release",
+      "key": "y"
+    },
+    {
+      "time": 36.813,
+      "type": "click",
+      "x": 200,
+      "y": 553,
+      "button": "left"
+    },
+    {
+      "time": 37.703,
+      "type": "click",
+      "x": 1192,
+      "y": 390,
+      "button": "left"
+    },
+    {
+      "time": 38.25,
+      "type": "click",
+      "x": 1504,
+      "y": 966,
+      "button": "left"
+    },
+    {
+      "time": 38.828,
+      "type": "click",
+      "x": 2230,
+      "y": 774,
+      "button": "left"
+    },
+    {
+      "time": 39.719,
+      "type": "click",
+      "x": 1993,
+      "y": 792,
+      "button": "left"
+    },
+    {
+      "time": 40.75,
+      "type": "click",
+      "x": 2318,
+      "y": 1509,
+      "button": "left"
+    },
+    {
+      "time": 41.485,
+      "type": "click",
+      "x": 2315,
+      "y": 370,
+      "button": "left"
+    },
+    {
+      "time": 42.266,
+      "type": "click",
+      "x": 2315,
+      "y": 1492,
+      "button": "left"
+    },
+    {
+      "time": 43.813,
+      "type": "click",
+      "x": 2313,
+      "y": 1306,
+      "button": "left"
+    },
+    {
+      "time": 45.188,
+      "type": "click",
+      "x": 2302,
+      "y": 1477,
+      "button": "left"
+    },
+    {
+      "time": 45.844,
+      "type": "click",
+      "x": 2245,
+      "y": 1332,
+      "button": "left"
+    },
+    {
+      "time": 46.844,
+      "type": "click",
+      "x": 1279,
+      "y": 799,
+      "button": "left"
+    },
+    {
+      "time": 47.203,
+      "type": "key_press",
+      "key": "j"
+    },
+    {
+      "time": 47.281,
+      "type": "key_release",
+      "key": "j"
+    },
+    {
+      "time": 49.438,
+      "type": "click",
+      "x": 999,
+      "y": 1483,
+      "button": "left"
+    },
+    {
+      "time": 50.156,
+      "type": "click",
+      "x": 1584,
+      "y": 982,
+      "button": "left"
+    },
+    {
+      "time": 51.781,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 51.922,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
   "comment": ""
 }

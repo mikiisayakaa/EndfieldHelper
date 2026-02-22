@@ -2,15 +2,6 @@
   "type": "composite",
   "configs": [
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\基建收菜\\谷地基建.json"
-    },
-    {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\基建收菜\\武陵基建.json"
-    },
-    {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\谷地倒货comp.json"
-    },
-    {
       "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货comp.json"
     },
     {
@@ -32,7 +23,13 @@
       "config": "D:\\Projects\\endfieldhelper\\configs\\情报交流\\情报交流comp.json"
     },
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\舰船收菜简化版.json"
+      "config": "D:/Projects/endfieldhelper/configs/背包整理/背包整理comp.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/送礼/送礼comp.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/帝江号收菜comp.json"
     }
   ],
   "comment": ""

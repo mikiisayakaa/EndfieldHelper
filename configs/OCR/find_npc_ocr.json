@@ -1,0 +1,11 @@
+{
+  "timeline": [
+    {
+      "time": 0.0,
+      "type": "find_npc_ocr",
+      "confidence_threshold": 0.5,
+      "min_matches": 10
+    }
+  ],
+  "comment": "Find NPC by walking along path dddwwwaaa with recognition at each step"
+}

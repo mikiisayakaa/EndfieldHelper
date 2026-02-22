@@ -1,0 +1,18 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "configs\\自动采集\\供能高地_中蘑菇\\地图_供能高地_中蘑菇.json"
+    },
+    {
+      "config": "configs\\OCR\\collection_max_ocr.json"
+    },
+    {
+      "config": "configs\\自动采集\\供能高地_中蘑菇\\前往传送点_供能高地_中蘑菇.json"
+    },
+    {
+      "config": "configs\\自动采集\\供能高地_中蘑菇\\前往采集点_供能高地_中蘑菇.json"
+    }
+  ],
+  "comment": ""
+}

@@ -1,0 +1,67 @@
+{
+  "timeline": [
+    {
+      "time": 0.015,
+      "type": "click",
+      "x": 1356,
+      "y": 1490,
+      "button": "left"
+    },
+    {
+      "time": 1.578,
+      "type": "key_press",
+      "key": "1"
+    },
+    {
+      "time": 1.718,
+      "type": "key_release",
+      "key": "1"
+    },
+    {
+      "time": 2.937,
+      "type": "click",
+      "x": 174,
+      "y": 1311,
+      "button": "left"
+    },
+    {
+      "time": 3.531,
+      "type": "click",
+      "x": 2160,
+      "y": 1492,
+      "button": "left"
+    },
+    {
+      "time": 5.625,
+      "type": "click",
+      "x": 1418,
+      "y": 1494,
+      "button": "left"
+    },
+    {
+      "time": 7.234,
+      "type": "click",
+      "x": 1418,
+      "y": 1494,
+      "button": "left"
+    },
+    {
+      "time": 8.531,
+      "type": "click",
+      "x": 2049,
+      "y": 1276,
+      "button": "left"
+    },
+    {
+      "time": 8.802999999999999,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 8.927999999999999,
+      "type": "key_press",
+      "key": "\u0018"
+    }
+  ],
+  "comment": ""
+}

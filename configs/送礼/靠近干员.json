@@ -41,22 +41,22 @@
       "key": "d"
     },
     {
-      "time": 5.0,
+      "time": 5.074,
       "type": "key_press",
       "key": "w"
     },
     {
-      "time": 5.313,
+      "time": 5.386999999999999,
       "type": "key_release",
       "key": "w"
     },
     {
-      "time": 6.0,
+      "time": 6.074,
       "type": "key_press",
       "key": "w"
     },
     {
-      "time": 6.406,
+      "time": 6.479999999999999,
       "type": "key_release",
       "key": "w"
     }

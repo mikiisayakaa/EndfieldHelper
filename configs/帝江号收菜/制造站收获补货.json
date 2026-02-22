@@ -1,96 +1,110 @@
 {
   "timeline": [
     {
-      "time": 2.812,
+      "time": 1.234,
       "type": "click",
-      "x": 1609,
-      "y": 1114,
+      "x": 1611,
+      "y": 1101,
       "button": "left"
     },
     {
-      "time": 4.578,
+      "time": 2.672,
       "type": "click",
-      "x": 1640,
-      "y": 1199,
+      "x": 1633,
+      "y": 1196,
       "button": "left"
     },
     {
-      "time": 6.234,
+      "time": 3.734,
       "type": "click",
-      "x": 1463,
-      "y": 1447,
+      "x": 1614,
+      "y": 1370,
       "button": "left"
     },
     {
-      "time": 7.546,
+      "time": 5.219,
       "type": "click",
-      "x": 1872,
-      "y": 1050,
+      "x": 1877,
+      "y": 1039,
       "button": "left"
     },
     {
-      "time": 8.468,
+      "time": 6.547,
       "type": "click",
-      "x": 1935,
-      "y": 1209,
+      "x": 1912,
+      "y": 1187,
       "button": "left"
     },
     {
-      "time": 10.109,
+      "time": 7.953,
       "type": "click",
-      "x": 2465,
-      "y": 57,
+      "x": 1638,
+      "y": 1346,
       "button": "left"
     },
     {
-      "time": 11.328,
+      "time": 10.094,
       "type": "click",
-      "x": 2018,
-      "y": 1126,
+      "x": 2485,
+      "y": 53,
       "button": "left"
     },
     {
-      "time": 13.734,
+      "time": 11.219,
       "type": "click",
-      "x": 1775,
-      "y": 1167,
+      "x": 1990,
+      "y": 1110,
       "button": "left"
     },
     {
-      "time": 15.062,
+      "time": 13.281,
       "type": "click",
-      "x": 1622,
-      "y": 1393,
+      "x": 1664,
+      "y": 1184,
       "button": "left"
     },
     {
-      "time": 16.015,
+      "time": 14.344,
       "type": "click",
-      "x": 1871,
-      "y": 1051,
+      "x": 1665,
+      "y": 1341,
       "button": "left"
     },
     {
-      "time": 16.781,
+      "time": 15.578,
       "type": "click",
-      "x": 1922,
-      "y": 1195,
+      "x": 1890,
+      "y": 1048,
       "button": "left"
     },
     {
-      "time": 18.156,
+      "time": 16.578,
       "type": "click",
-      "x": 2467,
-      "y": 77,
+      "x": 1920,
+      "y": 1201,
       "button": "left"
     },
     {
-      "time": 19.5,
+      "time": 17.797,
+      "type": "click",
+      "x": 1668,
+      "y": 1318,
+      "button": "left"
+    },
+    {
+      "time": 19.484,
+      "type": "click",
+      "x": 2466,
+      "y": 76,
+      "button": "left"
+    },
+    {
+      "time": 20.219,
       "type": "key_press",
       "key": "ctrl_l"
     },
     {
-      "time": 19.671,
+      "time": 20.344,
       "type": "key_press",
       "key": "\u0018"
     }

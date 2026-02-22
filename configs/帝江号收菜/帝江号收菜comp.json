@@ -5,10 +5,13 @@
       "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\打开面板.json"
     },
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\制造站收获补货.json"
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/线索comp.json"
     },
     {
-      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/关闭面板.json"
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/制造站comp.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/植物comp.json"
     }
   ],
   "comment": ""

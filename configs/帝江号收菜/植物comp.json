@@ -1,0 +1,15 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\植物收菜.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\OCR\\plants_ocr.json"
+    },
+    {
+      "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/收菜返回.json"
+    }
+  ],
+  "comment": ""
+}

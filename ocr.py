@@ -238,3 +238,75 @@ def recognize_template(
         "x2": result["bbox"][2],
         "y2": result["bbox"][3],
     }
+
+def recognize_compare_two_templates(
+    full_screen_image: Image.Image,
+    template1_name: str,
+    template2_name: str,
+    min_matches: int = 4,
+) -> dict | None:
+    """
+    Compare two templates and recognize if template1 has higher confidence than template2.
+    
+    Args:
+        full_screen_image: Full screen image (PIL Image)
+        template1_name: Name of first template (subdirectory/filename)
+        template2_name: Name of second template (subdirectory/filename)
+        min_matches: Minimum number of SIFT matches required
+    
+    Returns:
+        Dict with:
+        {
+            "success": bool,
+            "winner": "template1", "template2", or None,
+            "confidence1": float (0-1),
+            "confidence2": float (0-1),
+            "center_x": int or None,
+            "center_y": int or None,
+            "message": str
+        }
+        Returns None if both templates fail to match
+    """
+    template1_path = TEMPLATE_DIR / template1_name
+    template2_path = TEMPLATE_DIR / template2_name
+    
+    # Try to find both templates
+    result1 = find_template_sift(full_screen_image, template1_path, min_matches)
+    result2 = find_template_sift(full_screen_image, template2_path, min_matches)
+    
+    confidence1 = result1["confidence"] if result1 else 0.0
+    confidence2 = result2["confidence"] if result2 else 0.0
+    
+    print(f"Compare: {template1_name}={confidence1:.2%} vs {template2_name}={confidence2:.2%}")
+    
+    if confidence1 == 0.0 and confidence2 == 0.0:
+        return {
+            "success": False,
+            "winner": None,
+            "confidence1": 0.0,
+            "confidence2": 0.0,
+            "center_x": None,
+            "center_y": None,
+            "message": f"Neither template found"
+        }
+    
+    if confidence1 > confidence2:
+        return {
+            "success": True,
+            "winner": "template1",
+            "confidence1": confidence1,
+            "confidence2": confidence2,
+            "center_x": result1["center_x"],
+            "center_y": result1["center_y"],
+            "message": f"template1 ({template1_name}) wins: {confidence1:.2%} > {confidence2:.2%}"
+        }
+    else:
+        return {
+            "success": False,
+            "winner": "template2",
+            "confidence1": confidence1,
+            "confidence2": confidence2,
+            "center_x": None,
+            "center_y": None,
+            "message": f"template2 ({template2_name}) wins or equal: {confidence1:.2%} <= {confidence2:.2%}"
+        }

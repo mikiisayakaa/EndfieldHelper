@@ -1,0 +1,27 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\进入助力1.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\OCR\\home_assist_ocr.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\退出助力.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\进入助力2.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\OCR\\home_assist_ocr.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\退出助力.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\制造站收获补货.json"
+    }
+  ],
+  "comment": ""
+}
