@@ -166,5 +166,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": "**谷地基建自动收菜**"
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "谷地自动卖基建物资",
+    "end_state": "3D场景",
+    "other_info": "不会调整卖的物资种类，需要确保物资足够"
+  }
 }

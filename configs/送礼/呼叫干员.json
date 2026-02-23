@@ -56,5 +56,10 @@
       "button": "left"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号-干员联络台",
+    "logic": "使用干员联络台呼叫干员，呼叫好感度最低的",
+    "end_state": "帝江号",
+    "other_info": ""
+  }
 }

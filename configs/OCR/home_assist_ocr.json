@@ -5,5 +5,10 @@
       "type": "home_assist_ocr"
     }
   ],
-  "comment": "Home Assistant OCR - Template recognition and click"
+  "comment": {
+    "start_state": "帝江号总控面板-制造站-生产助力界面",
+    "logic": "识别是否有生产助力，若有，循环点击使用助力直到用完（点击使用助力两次），若无则结束",
+    "end_state": "帝江号总控面板-制造站-生产助力界面",
+    "other_info": "用于制造站自动使用助力，兼容没有助力的状态"
+  }
 }

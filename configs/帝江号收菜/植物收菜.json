@@ -42,5 +42,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板",
+    "logic": "进入培养仓并收取成熟的物资",
+    "end_state": "帝江号总控面板-培养仓",
+    "other_info": ""
+  }
 }

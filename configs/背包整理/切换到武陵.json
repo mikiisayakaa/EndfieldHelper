@@ -39,5 +39,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号-背包",
+    "logic": "切换到武陵背包仓库",
+    "end_state": "帝江号-背包",
+    "other_info": ""
+  }
 }

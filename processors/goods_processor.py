@@ -12,6 +12,7 @@ from ocr import find_template_sift
 
 
 SCREENSHOT_DIR = Path("templates")
+GOODS_TEMPLATE_DIR = Path("templates") / "goods"
 
 
 def parse_grid_from_template(template_path: Path | str) -> tuple[int, int]:
@@ -97,7 +98,7 @@ def _template_sort_key(path: Path) -> tuple[int, str]:
 
 def _load_goods_item_templates(group: str) -> list[Path]:
     prefix = f"goods_{group}_"
-    return sorted(SCREENSHOT_DIR.glob(f"{prefix}*.png"), key=_template_sort_key)
+    return sorted(GOODS_TEMPLATE_DIR.glob(f"{prefix}*.png"), key=_template_sort_key)
 
 
 def split_tiles(image: Image.Image, rows: int = 2, cols: int = 7) -> list[tuple[int, int, Image.Image]]:
@@ -302,8 +303,14 @@ def process_goods_image(template_path: Path | str | None = None) -> dict:
 
 def analyze_goods_data(ocr_result: dict) -> dict | None:
     """
-    Analyze OCR result to find the item with max percentage and green arrow.
-    Returns the percent value and the center position of the item.
+    Analyze OCR result to find the best item.
+    
+    Priority:
+    1. If green items exist: pick the one with max percent (highest discount)
+    2. If no green: pick red item with min percent (lowest price increase)
+    3. Otherwise: return None
+    
+    Returns value and center position of the best item.
     
     Args:
         ocr_result: Output from process_goods_image()
@@ -314,22 +321,14 @@ def analyze_goods_data(ocr_result: dict) -> dict | None:
             "percent": str (e.g., "5.2%"),
             "percent_value": float (e.g., 5.2),
             "center_x": int,
-            "center_y": int
+            "center_y": int,
+            "arrow": str ("green" or "red")
         }
         or None if no valid item found.
     """
     goods_list = ocr_result.get("goods", [])
     
-    # Filter: percent is not null and arrow is green
-    valid_items = [
-        item for item in goods_list
-        if item.get("percent") is not None and item.get("arrow") == "green"
-    ]
-    
-    if not valid_items:
-        return None
-    
-    # Extract percent value and find max
+    # Extract numeric value from percent string
     def extract_percent_value(percent_str: str) -> float:
         """Extract numeric value from percent string like '5.2%'"""
         match = re.search(r"(\d+\.?\d*)", percent_str)
@@ -337,18 +336,39 @@ def analyze_goods_data(ocr_result: dict) -> dict | None:
             return float(match.group(1))
         return 0.0
     
-    max_item = max(valid_items, key=lambda x: extract_percent_value(x.get("percent", "0%")))
+    # Separate items by arrow color
+    green_items = [
+        item for item in goods_list
+        if item.get("percent") is not None and item.get("arrow") == "green"
+    ]
+    
+    red_items = [
+        item for item in goods_list
+        if item.get("percent") is not None and item.get("arrow") == "red"
+    ]
+    
+    # Prefer green (max discount) if available
+    if green_items:
+        max_item = max(green_items, key=lambda x: extract_percent_value(x.get("percent", "0%")))
+    # Otherwise use red (min price increase)
+    elif red_items:
+        max_item = min(red_items, key=lambda x: extract_percent_value(x.get("percent", "0%")))
+    else:
+        # No valid items found
+        return None
     
     percent = max_item.get("percent")
     percent_value = extract_percent_value(percent)
     center_x = max_item.get("center_x")
     center_y = max_item.get("center_y")
+    arrow = max_item.get("arrow")
     
     return {
         "percent": percent,
         "percent_value": percent_value,
         "center_x": center_x,
         "center_y": center_y,
+        "arrow": arrow,
     }
 
 

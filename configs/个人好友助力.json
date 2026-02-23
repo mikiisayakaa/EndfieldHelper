@@ -422,5 +422,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": "**个人用好友助力**"
+  "comment": {
+    "start_state": "",
+    "logic": "",
+    "end_state": "",
+    "other_info": "**个人用好友助力**"
+  }
 }

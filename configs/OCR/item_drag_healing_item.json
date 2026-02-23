@@ -6,5 +6,10 @@
       "item_id": "healing_item"
     }
   ],
-  "comment": "Item drag - Healing item"
+  "comment": {
+    "start_state": "帝江号-背包界面-可用道具",
+    "logic": "识别治疗物品（紫药），拖动到背包",
+    "end_state": "帝江号-背包界面-可用道具",
+    "other_info": "用于背包整理，需要有紫药，需要背包有空位，如果使用其他物品，请自行修改templates/items/healing_item.png"
+  }
 }

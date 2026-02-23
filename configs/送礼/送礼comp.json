@@ -26,5 +26,10 @@
       "config": "configs\\送礼\\回到会客室.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号会客室",
+    "logic": "自动为干员送礼，执行两轮，确保第一轮是接收礼物的情况下依然可以完成送礼",
+    "end_state": "帝江号会客室",
+    "other_info": ""
+  }
 }

@@ -45,5 +45,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号",
+    "logic": "送礼完成后传送回会客室",
+    "end_state": "帝江号会客室传送点",
+    "other_info": ""
+  }
 }

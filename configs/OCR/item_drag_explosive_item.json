@@ -6,5 +6,10 @@
       "item_id": "explosive_item"
     }
   ],
-  "comment": "Item drag - Explosive item"
+  "comment": {
+    "start_state": "帝江号-背包界面-可用道具",
+    "logic": "识别爆炸物，然后拖动爆炸物到背包",
+    "end_state": "帝江号-背包界面-可用道具",
+    "other_info": "用于背包整理，需要有爆炸物，需要背包有空位"
+  }
 }

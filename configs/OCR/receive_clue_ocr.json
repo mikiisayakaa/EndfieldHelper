@@ -8,5 +8,10 @@
       "min_matches": 10
     }
   ],
-  "comment": "Compare receive_all.png and invite.png. Click if receive_all wins."
+  "comment": {
+    "start_state": "帝江号总控面板-会客室-接收线索",
+    "logic": "识别有没有线索可以接受，若有，接收线索",
+    "end_state": "帝江号总控面板-会客室-接收线索",
+    "other_info": "用于自动接收线索"
+  }
 }

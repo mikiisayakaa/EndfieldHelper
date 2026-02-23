@@ -8,8 +8,13 @@
       "config": "configs\\OCR\\goods_ocr_gudi.json"
     },
     {
-      "config": "configs\\倒货\\拉货物进度条并退出.json"
+      "config": "configs\\倒货\\拉货物进度条.json"
     }
   ],
-  "comment": "谷地倒货进货"
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "进入谷地弹性物资面板，识别最实惠物资并购买",
+    "end_state": "背包拥有购买的谷地物资",
+    "other_info": "谷地自动倒卖中间操作，要求有剩余可购买的容量，且调度券足够"
+  }
 }

@@ -7,5 +7,10 @@
       "min_matches": 10
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板-会客室",
+    "logic": "识别7个线索位是否是空的，若是，则执行放置线索.json",
+    "end_state": "帝江号总控面板-会客室",
+    "other_info": "用于线索自动化"
+  }
 }

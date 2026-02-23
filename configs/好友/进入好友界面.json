@@ -38,5 +38,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "进入好友界面",
+    "end_state": "好友界面",
+    "other_info": ""
+  }
 }

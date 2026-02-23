@@ -20,5 +20,10 @@
       "config": "configs\\背包整理\\退出背包.json"
     }
   ],
-  "comment": "背包整理，先清空，然后拿回血药和爆炸物"
+  "comment": {
+    "start_state": "帝江号",
+    "logic": "自动清理背包，切换到谷地，进行一键清理，然后拿紫药和爆炸物",
+    "end_state": "帝江号",
+    "other_info": "可以修改，比如修改到武陵仓库，拿针剂（把针剂贴图替换templates/healing_item.png）"
+  }
 }

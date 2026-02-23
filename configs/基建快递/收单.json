@@ -94,5 +94,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": "**自动收获派发的快递单**"
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "自动收取快递单",
+    "end_state": "3D场景",
+    "other_info": ""
+  }
 }

@@ -32,5 +32,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": "\u0018"
+  "comment": {
+    "start_state": "好友界面",
+    "logic": "退出好友界面",
+    "end_state": "3D场景",
+    "other_info": ""
+  }
 }

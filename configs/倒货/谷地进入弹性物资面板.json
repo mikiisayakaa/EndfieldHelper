@@ -56,5 +56,10 @@
       "button": "left"
     }
   ],
-  "comment": "谷地倒货进货 - OCR前的操作"
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "进入谷地弹性物资面板",
+    "end_state": "谷地弹性物资面板",
+    "other_info": "谷地倒货进货中间操作"
+  }
 }

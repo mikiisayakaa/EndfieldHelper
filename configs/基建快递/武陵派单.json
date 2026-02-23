@@ -132,5 +132,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": "**武陵快递派单**"
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "自动接取武陵快递并派单",
+    "end_state": "3D场景",
+    "other_info": "需要有足够的货物"
+  }
 }

@@ -463,9 +463,14 @@ def start_gui() -> int:
             with open(config_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # Add comment field if it doesn't exist
+            # Add comment field if it doesn't exist (new structured format)
             if "comment" not in data:
-                data["comment"] = ""
+                data["comment"] = {
+                    "start_state": "",
+                    "logic": "",
+                    "end_state": "",
+                    "other_info": ""
+                }
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 app_logger.info(f"Added comment field to {config_path}")
@@ -511,7 +516,12 @@ def start_gui() -> int:
         composite_data = {
             "type": "composite",
             "configs": [{"config": str(cfg)} for cfg in composite_configs],
-            "comment": comment_text.get("1.0", tk.END).rstrip()
+            "comment": {
+                "start_state": comment_start_state.get("1.0", tk.END).rstrip(),
+                "logic": comment_logic.get("1.0", tk.END).rstrip(),
+                "end_state": comment_end_state.get("1.0", tk.END).rstrip(),
+                "other_info": comment_other_info.get("1.0", tk.END).rstrip(),
+            }
         }
         
         try:
@@ -535,9 +545,12 @@ def start_gui() -> int:
             if isinstance(data, dict) and data.get("type") == "composite":
                 composite_configs = [item["config"] for item in data.get("configs", [])]
                 # Load and display comment
-                comment = data.get("comment", "")
+                comment = data.get("comment", {})
+                if isinstance(comment, str):
+                    # Migrate old format to new format
+                    comment = {"start_state": "", "logic": "", "end_state": "", "other_info": comment}
                 update_comment_text_from_var(comment)
-                config_comment_var.set(comment)
+                config_comment_var.set(json.dumps(comment, ensure_ascii=False))
                 composite_listbox.delete(0, tk.END)
                 for cfg in composite_configs:
                     composite_listbox.insert(tk.END, Path(cfg).name)
@@ -705,9 +718,6 @@ def start_gui() -> int:
             filetypes=[("JSON", "*.json"), ("All files", "*.*")],
         )
         if path:
-            # Save current comment before switching
-            save_current_comment()
-            
             config_path = Path(path)
             config_var.set(path)
             app_logger.info(f"Config file selected: {path}")
@@ -718,7 +728,7 @@ def start_gui() -> int:
             # Load and display config comment
             comment = load_config_comment(config_path)
             update_comment_text_from_var(comment)
-            config_comment_var.set(comment)
+            config_comment_var.set(json.dumps(comment, ensure_ascii=False))
             
             # Try to load as composite config
             if load_composite_config(config_path):
@@ -753,6 +763,9 @@ def start_gui() -> int:
                         # Recursively add contents
                         add_folder_to_tree(folder_id, item)
                     elif item.suffix == '.json':
+                        # Skip user_settings.json
+                        if item.name == 'user_settings.json':
+                            continue
                         # Add JSON file
                         add_comment_field_to_config(item)
                         config_tree.insert(parent_id, 'end', text=item.name, 
@@ -774,14 +787,24 @@ def start_gui() -> int:
         if folder:
             load_config_folder_by_path(Path(folder))
     
-    def load_config_comment(config_path: Path) -> str:
-        """Load comment from config file."""
+    def load_config_comment(config_path: Path) -> dict:
+        """Load comment from config file (returns structured dict)."""
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            return data.get("comment", "")
+            comment = data.get("comment", {})
+            # Handle old string format by converting to new dict format
+            if isinstance(comment, str):
+                return {"start_state": "", "logic": "", "end_state": "", "other_info": comment}
+            # Ensure all keys exist
+            return {
+                "start_state": comment.get("start_state", ""),
+                "logic": comment.get("logic", ""),
+                "end_state": comment.get("end_state", ""),
+                "other_info": comment.get("other_info", "")
+            }
         except Exception:
-            return ""
+            return {"start_state": "", "logic": "", "end_state": "", "other_info": ""}
 
     def on_config_select(event) -> None:
         """Handle config selection from tree."""
@@ -791,15 +814,12 @@ def start_gui() -> int:
             item_values = config_tree.item(item_id, 'values')
             
             if len(item_values) >= 2 and item_values[1] == 'file':
-                # Save current comment before switching
-                save_current_comment()
-                
                 config_path = Path(item_values[0])
                 config_var.set(str(config_path))
                 # Load and display config comment
                 comment = load_config_comment(config_path)
                 update_comment_text_from_var(comment)
-                config_comment_var.set(comment)
+                config_comment_var.set(json.dumps(comment, ensure_ascii=False))
                 app_logger.info(f"Config selected from list: {config_path}")
                 
                 # Refresh edit view to show the selected config
@@ -2084,6 +2104,36 @@ def start_gui() -> int:
         if not webbrowser.open(repo_url):
             messagebox.showinfo(i18n.t("help_title"), repo_url)
 
+    def save_current_comment() -> None:
+        """Save the current comment to the config file."""
+        config_path_str = config_var.get().strip()
+        if not config_path_str:
+            return
+
+        config_path = Path(config_path_str)
+        if not config_path.exists():
+            return
+
+        current_comment = {
+            "start_state": comment_start_state.get("1.0", tk.END).rstrip(),
+            "logic": comment_logic.get("1.0", tk.END).rstrip(),
+            "end_state": comment_end_state.get("1.0", tk.END).rstrip(),
+            "other_info": comment_other_info.get("1.0", tk.END).rstrip(),
+        }
+
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            if data.get("comment") != current_comment:
+                data["comment"] = current_comment
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                app_logger.info(f"Saved comment to {config_path}")
+                status_var.set(i18n.t("comment_saved"))
+        except Exception as e:
+            app_logger.error(f"Failed to save comment: {e}")
+
     def _apply_screen_transform_from_vars() -> None:
         try:
             width = int(float(screen_width_var.get().strip()))
@@ -2237,7 +2287,12 @@ def start_gui() -> int:
             return
         
         # Add comment to data (from text box, not var)
-        data["comment"] = comment_text.get("1.0", tk.END).rstrip()
+        data["comment"] = {
+            "start_state": "",
+            "logic": "",
+            "end_state": "",
+            "other_info": ""
+        }
         
         try:
             save_steps(config_path, data)
@@ -2303,37 +2358,81 @@ def start_gui() -> int:
     coord_settings_button.pack(side=tk.LEFT, padx=(4, 0))
 
     # Comment text frame
-    comment_label = tk.Label(root, text=i18n.t("comment"), font=("Arial", 9))
+    comment_header = tk.Frame(root)
+    comment_header.grid(row=2, column=0, sticky="we", **padding)
+    comment_label = tk.Label(comment_header, text=i18n.t("comment"), font=("Arial", 9))
     ui_elements['comment_label'] = (comment_label, 'comment', False)
-    comment_label.grid(row=2, column=0, sticky="w", **padding)
-    
-    comment_frame = tk.Frame(root)
-    comment_frame.grid(row=3, column=0, sticky="nsew", **padding)
-    comment_scrollbar = tk.Scrollbar(comment_frame, orient=tk.VERTICAL)
-    comment_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    comment_text = tk.Text(
-        comment_frame,
-        height=3,
-        yscrollcommand=comment_scrollbar.set,
+    comment_label.pack(side=tk.LEFT)
+    comment_save_button = ttk.Button(
+        comment_header,
+        text=i18n.t("save_comment"),
+        command=save_current_comment,
+        width=8,
+        style="Modern.TButton",
     )
-    comment_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-    comment_scrollbar.config(command=comment_text.yview)
-    def sync_comment_to_var(event=None) -> None:
-        """Sync comment text to StringVar (strips whitespace on focus out)."""
-        if event is None or event.type == '9':  # FocusOut event
-            config_comment_var.set(comment_text.get("1.0", tk.END).rstrip())
+    ui_elements['comment_save_button'] = (comment_save_button, 'save', True)
+    comment_save_button.pack(side=tk.LEFT, padx=(6, 0))
     
-    def update_comment_text_from_var(comment: str) -> None:
-        """Update comment text box from StringVar (for config load)."""
-        comment_text.config(state=tk.NORMAL)
-        comment_text.delete("1.0", tk.END)
-        comment_text.insert("1.0", comment)
-        comment_text.config(state=tk.NORMAL)
+    # Create 4 text entry fields for structured comment format
+    comment_container = tk.Frame(root)
+    comment_container.grid(row=3, column=0, sticky="nsew", **padding)
+    root.grid_rowconfigure(3, weight=1)
+
+    # Helper function to create comment field with label
+    comment_fields = {}
     
-    # Only sync on focus out to avoid interrupting input
-    comment_text.bind("<FocusOut>", sync_comment_to_var)
-    # Remove the trace binding to prevent auto-updates that interrupt typing
-    # config_comment_var.trace("w", update_comment_text)
+    def create_comment_field(container, field_key, label_text, row):
+        """Create a labeled text field for comment."""
+        field_frame = tk.Frame(container)
+        field_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 4))
+        
+        label = tk.Label(field_frame, text=label_text, font=("Arial", 8), fg="#666")
+        label.pack(side=tk.TOP, anchor="w")
+        
+        text_frame = tk.Frame(field_frame)
+        text_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        
+        scrollbar = tk.Scrollbar(text_frame, orient=tk.VERTICAL)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        text_widget = tk.Text(
+            text_frame,
+            height=2,
+            yscrollcommand=scrollbar.set,
+            font=("Arial", 9),
+        )
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=text_widget.yview)
+        
+        comment_fields[field_key] = text_widget
+        return text_widget
+    
+    comment_start_state = create_comment_field(comment_container, "start_state", i18n.t("comment_start_state"), 0)
+    comment_logic = create_comment_field(comment_container, "logic", i18n.t("comment_logic"), 1)
+    comment_end_state = create_comment_field(comment_container, "end_state", i18n.t("comment_end_state"), 2)
+    comment_other_info = create_comment_field(comment_container, "other_info", i18n.t("comment_other_info"), 3)
+    
+    def update_comment_text_from_var(comment: dict) -> None:
+        """Update comment fields from dictionary (for config load)."""
+        if isinstance(comment, str):
+            # Handle old format - put it in other_info
+            comment = {"start_state": "", "logic": "", "end_state": "", "other_info": comment}
+        
+        comment_start_state.config(state=tk.NORMAL)
+        comment_start_state.delete("1.0", tk.END)
+        comment_start_state.insert("1.0", comment.get("start_state", ""))
+        
+        comment_logic.config(state=tk.NORMAL)
+        comment_logic.delete("1.0", tk.END)
+        comment_logic.insert("1.0", comment.get("logic", ""))
+        
+        comment_end_state.config(state=tk.NORMAL)
+        comment_end_state.delete("1.0", tk.END)
+        comment_end_state.insert("1.0", comment.get("end_state", ""))
+        
+        comment_other_info.config(state=tk.NORMAL)
+        comment_other_info.delete("1.0", tk.END)
+        comment_other_info.insert("1.0", comment.get("other_info", ""))
 
     # Notebook for two modes: Recording and Composite
     notebook = ttk.Notebook(root)
@@ -2620,37 +2719,9 @@ def start_gui() -> int:
         _start_arrow_worker()
         _start_arrow_key_hook()
 
-    def save_current_comment() -> None:
-        """Save the current comment to the config file."""
-        config_path_str = config_var.get().strip()
-        if not config_path_str:
-            return
-        
-        config_path = Path(config_path_str)
-        if not config_path.exists():
-            return
-        
-        # Get current comment from text box
-        current_comment = comment_text.get("1.0", tk.END).rstrip()
-        
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            # Only save if comment has changed
-            if data.get("comment") != current_comment:
-                data["comment"] = current_comment
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-                app_logger.info(f"Saved comment to {config_path}")
-        except Exception as e:
-            app_logger.error(f"Failed to save comment: {e}")
 
     def on_window_close() -> None:
         nonlocal should_close
-        # Save current comment before closing
-        save_current_comment()
-        app_logger.info("Saving current comment before close")
         should_close = True
         if hotkey_listener:
             hotkey_listener.stop()

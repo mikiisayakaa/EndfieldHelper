@@ -10,5 +10,10 @@
       "match_threshold": 0.7
     }
   ],
-  "comment": "Qingbao OCR loop - Auto intelligence sharing with friends"
+  "comment": {
+    "start_state": "好友界面",
+    "logic": "自动识别是否有可以情报交流的好友，若有，点击访问并执行情报访问.json，若无，下滑列表继续寻找，访问五次/识别20次中止",
+    "end_state": "好友界面",
+    "other_info": "用于自动情报交流"
+  }
 }

@@ -17,5 +17,10 @@
       "config": "D:/Projects/endfieldhelper/configs/自动采集/返回帝江号.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "",
+    "logic": "",
+    "end_state": "",
+    "other_info": ""
+  }
 }

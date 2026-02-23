@@ -15,5 +15,10 @@
       "button": "left"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号-背包",
+    "logic": "使用一键清理清空背包（规则在游戏里自己设置），然后点击仓库可用道具栏",
+    "end_state": "帝江号-背包",
+    "other_info": "背包清理中间操作"
+  }
 }

@@ -56,5 +56,10 @@
       "button": "left"
     }
   ],
-  "comment": "武陵倒货进货 - OCR前的操作"
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "进入武陵弹性物资面板",
+    "end_state": "武陵弹性物资面板",
+    "other_info": "武陵倒货进货中间操作"
+  }
 }

@@ -25,5 +25,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板-培养仓",
+    "logic": "结束培养仓收菜，退出总控面板",
+    "end_state": "帝江号",
+    "other_info": ""
+  }
 }

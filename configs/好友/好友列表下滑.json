@@ -21,5 +21,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "好友界面",
+    "logic": "将好友列表拖动下滑一次",
+    "end_state": "好友界面",
+    "other_info": "自动情报交流中间操作"
+  }
 }

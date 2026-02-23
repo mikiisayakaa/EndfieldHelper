@@ -10,5 +10,10 @@
       "config_if_template2": "configs/送礼/赠送礼物.json"
     }
   ],
-  "comment": "Compare receive_gift and send_gift. Execute different config based on which wins."
+  "comment": {
+    "start_state": "帝江号-与干员对话状态",
+    "logic": "检查对话选项是收下礼物还是赠送礼物，若是收下礼物，执行收下礼物.json，否则执行赠送礼物.json",
+    "end_state": "帝江号",
+    "other_info": "用于自动送礼功能，会根据是否有收礼的情况做出区分应对"
+  }
 }

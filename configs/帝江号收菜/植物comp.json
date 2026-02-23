@@ -11,5 +11,10 @@
       "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/收菜返回.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板",
+    "logic": "完成培养仓收菜和重新培养",
+    "end_state": "帝江号总控面板",
+    "other_info": ""
+  }
 }

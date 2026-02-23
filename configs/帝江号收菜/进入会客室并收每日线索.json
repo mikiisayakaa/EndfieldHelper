@@ -46,5 +46,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板",
+    "logic": "进入会客室，接收每日线索",
+    "end_state": "帝江号总控面板-会客室",
+    "other_info": ""
+  }
 }

@@ -21,5 +21,10 @@
       "key": "b"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号",
+    "logic": "进入背包",
+    "end_state": "帝江号-背包",
+    "other_info": ""
+  }
 }

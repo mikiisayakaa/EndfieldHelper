@@ -90,5 +90,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "好友界面-点击好友准备访问",
+    "logic": "访问好友并进行情报交流",
+    "end_state": "帝江号会客室传送点",
+    "other_info": ""
+  }
 }

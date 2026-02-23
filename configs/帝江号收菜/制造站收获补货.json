@@ -109,5 +109,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板",
+    "logic": "自动制造站收获补货",
+    "end_state": "帝江号总控面板",
+    "other_info": ""
+  }
 }

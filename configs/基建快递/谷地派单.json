@@ -375,5 +375,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "自动接取谷地3个快递并派单",
+    "end_state": "3D场景",
+    "other_info": "需要有足够的货物"
+  }
 }

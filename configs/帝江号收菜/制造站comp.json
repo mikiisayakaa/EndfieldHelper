@@ -23,5 +23,10 @@
       "config": "D:\\Projects\\endfieldhelper\\configs\\帝江号收菜\\制造站收获补货.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板",
+    "logic": "自动制造站收获、补货、使用助力",
+    "end_state": "帝江号总控面板",
+    "other_info": ""
+  }
 }

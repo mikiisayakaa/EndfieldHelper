@@ -66,5 +66,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "",
+    "logic": "",
+    "end_state": "",
+    "other_info": ""
+  }
 }

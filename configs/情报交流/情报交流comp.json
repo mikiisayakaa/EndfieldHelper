@@ -11,5 +11,10 @@
       "config": "configs\\好友\\退出好友界面.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "自动寻找五个可以交流的好友进行情报交流，若不足五个，会在识别次数达到上限后自动退出",
+    "end_state": "帝江号会客室传送点",
+    "other_info": "如果有可交流的但识别不到，尝试自己截图替换一下templates/qingbao_valid.png"
+  }
 }

@@ -1,42 +1,37 @@
 {
   "timeline": [
     {
-      "time": 0.15599999999999992,
-      "type": "drag",
-      "start_x": 0.521484,
-      "start_y": 0.56625,
-      "end_x": 0.499609,
-      "end_y": 0.499375,
-      "button": "left",
-      "duration": 0.125
-    },
-    {
-      "time": 1.0779999999999998,
+      "time": 0.3779999999999999,
       "type": "key_press",
       "key": "f"
     },
     {
-      "time": 1.1720000000000002,
+      "time": 0.4720000000000002,
       "type": "key_release",
       "key": "f"
     },
     {
-      "time": 5.453,
+      "time": 4.753,
       "type": "click",
       "x": 0.496875,
       "y": 0.9475,
       "button": "left"
     },
     {
-      "time": 6.453,
+      "time": 5.753,
       "type": "key_press",
       "key": "ctrl_l"
     },
     {
-      "time": 6.625,
+      "time": 5.925,
       "type": "key_press",
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号",
+    "logic": "F + 点击",
+    "end_state": "进入干员对话",
+    "other_info": "送礼中间操作，与干员对话然后跳过干员的第一句话"
+  }
 }

@@ -7,5 +7,10 @@
       "min_matches": 10
     }
   ],
-  "comment": "Find NPC by walking along path dddwwwaaa with recognition at each step"
+  "comment": {
+    "start_state": "帝江号-干员联络台旁边",
+    "logic": "依次执行DDDWWWAAA九次移动，每次移动后检查是否可以与干员对话，若有，结束功能，否则继续执行",
+    "end_state": "帝江号-干员联络台旁边",
+    "other_info": "用于自动送礼过程中联络干员后靠近干员"
+  }
 }

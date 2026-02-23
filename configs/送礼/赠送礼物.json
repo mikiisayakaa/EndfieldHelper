@@ -63,5 +63,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "干员对话",
+    "logic": "赠送礼物，结束对话",
+    "end_state": "帝江号",
+    "other_info": "自动选择礼物列表的第一个进行赠送，需要确保有礼物"
+  }
 }

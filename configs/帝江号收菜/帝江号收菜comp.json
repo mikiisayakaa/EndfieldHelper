@@ -14,5 +14,10 @@
       "config": "D:/Projects/endfieldhelper/configs/帝江号收菜/植物comp.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号",
+    "logic": "自动完成帝江号总控面板收菜，包括线索、制造站和培养仓",
+    "end_state": "帝江号",
+    "other_info": ""
+  }
 }

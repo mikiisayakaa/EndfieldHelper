@@ -6,5 +6,10 @@
       "template": "gudi"
     }
   ],
-  "comment": "Goods OCR for Gudi - Recognize goods and click cheapest item"
+  "comment": {
+    "start_state": "谷地弹性物资面板",
+    "logic": "识别所有的谷地弹性物资，选择降价幅度最大的（如果全涨价，则选择涨价幅度最小的）进行点击",
+    "end_state": "对应物资的购买面板",
+    "other_info": "用于谷地自动倒货功能，注意，需要保证没有任何已购物资，识别结果才是唯一的，否则可能出错"
+  }
 }

@@ -14,5 +14,10 @@
       "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵批量卖货.json"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "3D场景",
+    "logic": "武陵弹性物资自动倒卖",
+    "end_state": "3D场景",
+    "other_info": "目前只支持当天购买当天立即卖出，不支持跨天囤货，因此收益不是最高"
+  }
 }

@@ -28,5 +28,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "干员对话",
+    "logic": "选择收下礼物，结束对话",
+    "end_state": "帝江号",
+    "other_info": "送礼中间操作"
+  }
 }

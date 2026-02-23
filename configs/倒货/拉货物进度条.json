@@ -25,19 +25,27 @@
       "button": "left"
     },
     {
-      "time": 5.672,
+      "time": 4.827,
       "type": "click",
-      "x": 0.958203,
-      "y": 0.04,
+      "x": 0.846875,
+      "y": 0.234375,
       "button": "left"
     },
     {
-      "time": 6.609,
-      "type": "click",
-      "x": 0.959375,
-      "y": 0.04,
-      "button": "left"
+      "time": 5.233,
+      "type": "key_press",
+      "key": "ctrl_l"
+    },
+    {
+      "time": 5.405,
+      "type": "key_press",
+      "key": "\u0018"
     }
   ],
-  "comment": "武陵倒货进货 - OCR后的操作"
+  "comment": {
+    "start_state": "弹性物资购买面板",
+    "logic": "拉满进度条，购买，退出面板",
+    "end_state": "弹性物资面板",
+    "other_info": "倒货-进货中间操作"
+  }
 }

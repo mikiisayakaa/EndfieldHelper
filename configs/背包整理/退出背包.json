@@ -13,5 +13,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号-背包",
+    "logic": "退出背包",
+    "end_state": "帝江号",
+    "other_info": ""
+  }
 }

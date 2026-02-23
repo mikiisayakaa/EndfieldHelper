@@ -31,5 +31,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号",
+    "logic": "打开帝江号总控面板",
+    "end_state": "帝江号总控面板",
+    "other_info": ""
+  }
 }

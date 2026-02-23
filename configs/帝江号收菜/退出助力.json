@@ -25,5 +25,10 @@
       "key": "\u0018"
     }
   ],
-  "comment": ""
+  "comment": {
+    "start_state": "帝江号总控面板-制造站-助力",
+    "logic": "退出助力并退出制造站",
+    "end_state": "帝江号总控面板",
+    "other_info": "制造站自动化中间操作"
+  }
 }

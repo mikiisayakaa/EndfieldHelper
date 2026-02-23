@@ -27,8 +27,15 @@ TRANSLATIONS = {
         "open_folder": "Open Folder",
         "refresh": "Reload",
         "save": "Save",
+        "save_comment": "Save Comment",
         "apply": "Apply",
         "cancel": "Cancel",
+        
+        # Comment fields
+        "comment_start_state": "Start State",
+        "comment_logic": "Logic/Function",
+        "comment_end_state": "End State",
+        "comment_other_info": "Other Info",
         
         # Buttons - Composite
         "save_composite": "Save Composite",
@@ -79,6 +86,7 @@ TRANSLATIONS = {
         "time_offset_success": "Applied time offset {delta}s to this and {count} following step(s)",
         "no_config_loaded": "No config loaded",
         "load_config_first": "Please load a config first",
+        "comment_saved": "Comment saved",
         "screen_invalid": "Please enter valid integers for width, height, and offsets.",
         "screen_applied": "Applied: {width}x{height} offset=({offset_x}, {offset_y})",
         
@@ -203,8 +211,15 @@ TRANSLATIONS = {
         "open_folder": "打开文件夹",
         "refresh": "重新加载",
         "save": "保存",
+        "save_comment": "保存备注",
         "apply": "应用",
         "cancel": "取消",
+        
+        # Comment fields
+        "comment_start_state": "起始状态",
+        "comment_logic": "逻辑功能",
+        "comment_end_state": "结束状态",
+        "comment_other_info": "其他信息",
         
         # Buttons - Composite
         "save_composite": "保存组合配置",
@@ -255,6 +270,7 @@ TRANSLATIONS = {
         "time_offset_success": "已应用 {delta}s 时间偏移到此步骤及其后的 {count} 个步骤",
         "no_config_loaded": "未加载配置",
         "load_config_first": "请先加载配置",
+        "comment_saved": "备注已保存",
         "screen_invalid": "请输入有效的宽度、高度和偏移整数。",
         "screen_applied": "已应用：{width}x{height} 偏移=({offset_x}, {offset_y})",
         
