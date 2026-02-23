@@ -14,7 +14,7 @@ a = Analysis(
         (os.path.join(project_root, 'templates'), 'templates'),
         (os.path.join(project_root, 'imgs'), 'imgs'),
     ],
-    hiddenimports=['cv2', 'easyocr', 'PIL', 'pynput', 'pyautogui', 'mouse', 'numpy', 'ahk'],
+    hiddenimports=['cv2', 'easyocr', 'PIL', 'pynput', 'pyautogui', 'mouse', 'numpy'],
     hookspath=[],
     runtime_hooks=[],
     excludedimports=[],

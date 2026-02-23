@@ -4,8 +4,6 @@ import logging
 from pathlib import Path
 from typing import Callable
 
-import cv2
-import numpy as np
 import pyautogui
 from PIL import Image, ImageGrab
 

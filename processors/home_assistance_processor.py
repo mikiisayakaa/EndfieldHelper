@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable
 
 import pyautogui
-from PIL import Image
 
 from ocr import recognize_template
 

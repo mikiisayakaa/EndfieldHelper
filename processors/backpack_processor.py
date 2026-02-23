@@ -12,25 +12,6 @@ from ocr import pil_to_bgr, find_template_sift
 ITEMS_DIR = Path("templates") / "items"
 
 
-def get_item_templates() -> list[tuple[str, Path]]:
-    """
-    Get all item templates from templates/items directory.
-    
-    Returns:
-        List of (item_id, template_path) tuples
-        Example: [("healing_item", Path("templates/items/healing_item.png")), ...]
-    """
-    if not ITEMS_DIR.exists():
-        return []
-    
-    templates = []
-    for template_path in sorted(ITEMS_DIR.glob("*.png")):
-        item_id = template_path.stem  # filename without extension
-        templates.append((item_id, template_path))
-    
-    return templates
-
-
 def find_item_with_sift(
     full_screen_image: Image.Image,
     template_path: Path,

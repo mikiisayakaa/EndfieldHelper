@@ -29,4 +29,6 @@ endfield_helper.log
 
 # Temporary files
 *.tmp
-temp/
+EndfieldHelper/
+prepare_release.bat
+*.zip

@@ -1343,49 +1343,6 @@ def start_gui() -> int:
         
         status_var.set(f"Loaded {edit_config_type} config for editing")
     
-    def format_event_details(event: dict) -> str:
-        """Format timeline event details for display."""
-        event_type = event.get("type", "")
-        
-        if event_type == "click":
-            x = _format_coord(event.get("x"), "x")
-            y = _format_coord(event.get("y"), "y")
-            return f"({x}, {y}) [{event.get('button', 'left')}]"
-        elif event_type == "drag":
-            start_x = _format_coord(event.get("start_x"), "x")
-            start_y = _format_coord(event.get("start_y"), "y")
-            end_x = _format_coord(event.get("end_x"), "x")
-            end_y = _format_coord(event.get("end_y"), "y")
-            return f"({start_x}, {start_y}) -> ({end_x}, {end_y})"
-        elif event_type == "hold":
-            x = _format_coord(event.get("x"), "x")
-            y = _format_coord(event.get("y"), "y")
-            return f"({x}, {y}) for {event.get('duration', 0):.2f}s"
-        elif event_type == "key_press":
-            return f"Press '{event.get('key', '')}'"
-        elif event_type == "key_release":
-            return f"Release '{event.get('key', '')}'"
-        else:
-            return json.dumps({k: v for k, v in event.items() if k != "type" and k != "time"})
-    
-    def format_step_details(step: dict) -> str:
-        """Format legacy step details for display."""
-        action = step.get("action", "")
-        
-        if action == "click":
-            x = _format_coord(step.get("x"), "x")
-            y = _format_coord(step.get("y"), "y")
-            return f"({x}, {y})"
-        elif action == "drag":
-            start_x = _format_coord(step.get("start_x"), "x")
-            start_y = _format_coord(step.get("start_y"), "y")
-            end_x = _format_coord(step.get("end_x"), "x")
-            end_y = _format_coord(step.get("end_y"), "y")
-            return f"({start_x}, {start_y}) -> ({end_x}, {end_y})"
-        elif action == "key":
-            return f"Key: {step.get('key', '')}"
-        else:
-            return json.dumps({k: v for k, v in step.items() if k != "action"})
     
     def save_edit_changes() -> None:
         """Save the edited config back to file."""
@@ -1505,19 +1462,6 @@ def start_gui() -> int:
                     app_logger.info(f"Deleted legacy step: {removed}")
                     status_var.set("Deleted legacy step")
     
-    def adjust_timeline_after_deletion(deleted_index: int) -> None:
-        """Adjust timeline after deleting an event."""
-        if edit_config_type != "timeline":
-            return
-        
-        timeline = edit_data.get("timeline", [])
-        if deleted_index >= len(timeline):
-            return
-        
-        # Get the time of the deleted event (we need to subtract this from subsequent events)
-        # Actually, we don't adjust times for deletion, only for insertion
-        # Just refresh the view
-        pass
     
     def adjust_timeline_after_insertion(insert_index: int, inserted_duration: float) -> None:
         """Adjust timeline after inserting new events."""

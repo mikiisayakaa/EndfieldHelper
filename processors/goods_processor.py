@@ -11,32 +11,7 @@ from PIL import Image, ImageGrab
 from ocr import find_template_sift
 
 
-SCREENSHOT_DIR = Path("templates")
 GOODS_TEMPLATE_DIR = Path("templates") / "goods"
-
-
-def parse_grid_from_template(template_path: Path | str) -> tuple[int, int]:
-    """
-    Extract grid dimensions from template filename.
-    Example: 'goods_template_gudi_7x2.png' -> (7, 2) (cols, rows)
-    
-    Args:
-        template_path: Path to template image or filename
-    
-    Returns:
-        (cols, rows) tuple, default (7, 2) if parsing fails
-    """
-    filename = Path(template_path).stem if isinstance(template_path, (Path, str)) else str(template_path)
-    
-    # Look for pattern like '7x2' in the filename
-    match = re.search(r'(\d+)x(\d+)', filename)
-    if match:
-        cols = int(match.group(1))
-        rows = int(match.group(2))
-        return (cols, rows)
-    
-    # Default fallback
-    return (7, 2)
 
 
 def find_template_region(
@@ -101,20 +76,6 @@ def _load_goods_item_templates(group: str) -> list[Path]:
     return sorted(GOODS_TEMPLATE_DIR.glob(f"{prefix}*.png"), key=_template_sort_key)
 
 
-def split_tiles(image: Image.Image, rows: int = 2, cols: int = 7) -> list[tuple[int, int, Image.Image]]:
-    width, height = image.size
-    cell_width = width // cols
-    cell_height = height // rows
-
-    tiles: list[tuple[int, int, Image.Image]] = []
-    for row in range(rows):
-        for col in range(cols):
-            left = col * cell_width
-            upper = row * cell_height
-            right = (col + 1) * cell_width if col < cols - 1 else width
-            lower = (row + 1) * cell_height if row < rows - 1 else height
-            tiles.append((row + 1, col + 1, image.crop((left, upper, right, lower))))
-    return tiles
 
 
 def _pick_percent_token(tokens: list[tuple[str, int, int, int, int]]) -> tuple[str | None, tuple[int, int, int, int] | None]:
