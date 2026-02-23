@@ -12,6 +12,38 @@ import pyautogui
 from pynput import keyboard, mouse
 
 
+_SCREEN_SIZE: tuple[int, int] | None = None
+
+
+def init_screen_size() -> tuple[int, int]:
+    global _SCREEN_SIZE
+    if _SCREEN_SIZE is None:
+        try:
+            size = pyautogui.size()
+            width, height = int(size.width), int(size.height)
+        except Exception:
+            try:
+                width = int(ctypes.windll.user32.GetSystemMetrics(0))
+                height = int(ctypes.windll.user32.GetSystemMetrics(1))
+            except Exception:
+                width, height = 1, 1
+        _SCREEN_SIZE = (max(1, width), max(1, height))
+    return _SCREEN_SIZE
+
+
+def get_screen_size() -> tuple[int, int]:
+    return init_screen_size()
+
+
+def _relative_to_absolute(value: float, max_value: int) -> int:
+    return int(round(float(value) * max_value))
+
+
+def _coords_relative_to_absolute(x_rel: float, y_rel: float) -> tuple[int, int]:
+    width, height = get_screen_size()
+    return _relative_to_absolute(x_rel, width), _relative_to_absolute(y_rel, height)
+
+
 def load_steps(config_path: Path) -> dict:
     """Load steps from config (timeline format)."""
     with config_path.open("r", encoding="utf-8") as handle:
@@ -76,6 +108,10 @@ class Recorder:
         self.mouse_down: dict | None = None
         self.pressed_keys: dict = {}
         self._skip_recording = False  # Flag to skip recording all operations (for internal sequences like goods_ocr)
+
+    def _to_relative(self, x: int, y: int) -> tuple[float, float]:
+        width, height = get_screen_size()
+        return round(x / width, 6), round(y / height, 6)
     
     def _elapsed_time(self) -> float:
         """Get elapsed time since recording started."""
@@ -125,30 +161,36 @@ class Recorder:
             
             if dx > self.drag_threshold or dy > self.drag_threshold:
                 # It's a drag (moved significantly)
+                start_x_rel, start_y_rel = self._to_relative(
+                    self.mouse_down["x"], self.mouse_down["y"]
+                )
+                end_x_rel, end_y_rel = self._to_relative(x, y)
                 self._add_event(
                     "drag",
-                    start_x=self.mouse_down["x"],
-                    start_y=self.mouse_down["y"],
-                    end_x=x,
-                    end_y=y,
+                    start_x=start_x_rel,
+                    start_y=start_y_rel,
+                    end_x=end_x_rel,
+                    end_y=end_y_rel,
                     button=self.mouse_down["button"],
                     duration=duration,
                 )
             elif duration >= self.hold_threshold:
                 # It's a hold (stayed in place for a while)
+                x_rel, y_rel = self._to_relative(self.mouse_down["x"], self.mouse_down["y"])
                 self._add_event(
                     "hold",
-                    x=self.mouse_down["x"],
-                    y=self.mouse_down["y"],
+                    x=x_rel,
+                    y=y_rel,
                     button=self.mouse_down["button"],
                     duration=duration,
                 )
             else:
                 # It's a quick click
+                x_rel, y_rel = self._to_relative(self.mouse_down["x"], self.mouse_down["y"])
                 self._add_event(
                     "click",
-                    x=self.mouse_down["x"],
-                    y=self.mouse_down["y"],
+                    x=x_rel,
+                    y=y_rel,
                     button=self.mouse_down["button"],
                 )
             
@@ -469,6 +511,7 @@ def run_timeline(
     wait_for_events: bool = False,
 ) -> None:
     """Execute timeline using main thread scheduling + spawned worker threads for each event."""
+    get_screen_size()
     timeline = data.get("timeline", [])
     goods_template = data.get("goods_template")  # Get template from config
     
@@ -509,24 +552,28 @@ def run_timeline(
                 if key_name in pressed_keys and pressed_keys[key_name] > 0:
                     pressed_keys[key_name] -= 1
         elif event_type == "click":
-            x = event.get("x")
-            y = event.get("y")
+            x_rel = event.get("x")
+            y_rel = event.get("y")
             clicks = event.get("clicks", 1)
             button = event.get("button", "left")
+            x, y = _coords_relative_to_absolute(float(x_rel), float(y_rel))
             _mouse_click(x, y, clicks=clicks, button=button)
         elif event_type == "hold":
-            x = event.get("x")
-            y = event.get("y")
+            x_rel = event.get("x")
+            y_rel = event.get("y")
             duration = event.get("duration", 0.3)
             button = event.get("button", "left")
+            x, y = _coords_relative_to_absolute(float(x_rel), float(y_rel))
             _mouse_hold(x, y, duration=duration, button=button)
         elif event_type == "drag":
-            start_x = event.get("start_x")
-            start_y = event.get("start_y")
-            end_x = event.get("end_x")
-            end_y = event.get("end_y")
+            start_x_rel = event.get("start_x")
+            start_y_rel = event.get("start_y")
+            end_x_rel = event.get("end_x")
+            end_y_rel = event.get("end_y")
             duration = event.get("duration", 0)
             button = event.get("button", "left")
+            start_x, start_y = _coords_relative_to_absolute(float(start_x_rel), float(start_y_rel))
+            end_x, end_y = _coords_relative_to_absolute(float(end_x_rel), float(end_y_rel))
             _mouse_drag(start_x, start_y, end_x, end_y, duration=duration, button=button)
             _mouse_up(button)
         elif event_type == "config_action":

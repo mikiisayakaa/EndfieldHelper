@@ -3,10 +3,10 @@
     {
       "time": 1.0,
       "type": "drag",
-      "start_x": 1290,
-      "start_y": 940,
-      "end_x": 1279,
-      "end_y": 799,
+      "start_x": 0.503906,
+      "start_y": 0.5875,
+      "end_x": 0.499609,
+      "end_y": 0.499375,
       "button": "right",
       "duration": 0.062000000005355105
     },

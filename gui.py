@@ -23,6 +23,7 @@ from automation import (
     save_steps,
     consume_composite_break,
     clear_composite_break,
+    init_screen_size,
 )
 from processors.goods_processor import process_goods_image, analyze_goods_data
 from processors.home_assistance_processor import process_home_assistance
@@ -137,6 +138,8 @@ def start_gui() -> int:
     app_logger.info("=" * 50)
     app_logger.info("Endfield Helper application started")
     app_logger.info("=" * 50)
+
+    init_screen_size()
     
     # Initialize internationalization (i18n) with default language English
     i18n = I18n(language="zh")
