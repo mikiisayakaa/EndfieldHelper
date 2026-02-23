@@ -23,7 +23,9 @@ from automation import (
     save_steps,
     consume_composite_break,
     clear_composite_break,
-    init_screen_size,
+    get_screen_size,
+    get_screen_offset,
+    set_screen_transform,
 )
 from processors.goods_processor import process_goods_image, analyze_goods_data
 from processors.home_assistance_processor import process_home_assistance
@@ -139,7 +141,26 @@ def start_gui() -> int:
     app_logger.info("Endfield Helper application started")
     app_logger.info("=" * 50)
 
-    init_screen_size()
+    def _format_coord(value: object, axis: str) -> str:
+        if value is None:
+            return ""
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return str(value)
+        numeric = float(value)
+        if numeric <= 1.0:
+            width, height = get_screen_size()
+            max_value = width if axis == "x" else height
+            offset_x, offset_y = get_screen_offset()
+            offset = offset_x if axis == "x" else offset_y
+            return str(int(round(numeric * max_value + offset)))
+        return str(int(round(numeric)))
+
+    def _absolute_to_relative(value: int, axis: str) -> float:
+        width, height = get_screen_size()
+        offset_x, offset_y = get_screen_offset()
+        max_value = width if axis == "x" else height
+        offset = offset_x if axis == "x" else offset_y
+        return round((value - offset) / max_value, 6)
     
     # Initialize internationalization (i18n) with default language English
     i18n = I18n(language="zh")
@@ -151,8 +172,8 @@ def start_gui() -> int:
     root.withdraw()
     root.grid_columnconfigure(0, weight=4, uniform="main_columns")
     root.grid_columnconfigure(1, weight=1, uniform="main_columns")
-    root.grid_rowconfigure(3, weight=1)
     root.grid_rowconfigure(4, weight=1)
+    root.grid_rowconfigure(5, weight=1)
 
     def _sync_root_column_sizes(event=None) -> None:
         width = root.winfo_width()
@@ -215,6 +236,11 @@ def start_gui() -> int:
     position_var = tk.StringVar(value="(0, 0)")
     click_hint_var = tk.StringVar(value="")
     config_comment_var = tk.StringVar(value="")  # Config comments
+    screen_width_var = tk.StringVar(value="2560")
+    screen_height_var = tk.StringVar(value="1600")
+    screen_offset_x_var = tk.StringVar(value="0")
+    screen_offset_y_var = tk.StringVar(value="0")
+    user_settings_path = Path("configs") / "user_settings.json"
     config_folder = None  # Store the selected config folder
     config_files = []  # Store the list of config files
     composite_configs = []  # Store the list of configs in composite mode
@@ -571,21 +597,21 @@ def start_gui() -> int:
                         key_name = event.get("key", "?")
                         line = f"T{event_time:.3f}: key_release {key_name}"
                     elif event_type == "click":
-                        x = event.get("x")
-                        y = event.get("y")
+                        x = _format_coord(event.get("x"), "x")
+                        y = _format_coord(event.get("y"), "y")
                         button = event.get("button", "left")
                         line = f"T{event_time:.3f}: click {button} ({x}, {y})"
                     elif event_type == "hold":
-                        x = event.get("x")
-                        y = event.get("y")
+                        x = _format_coord(event.get("x"), "x")
+                        y = _format_coord(event.get("y"), "y")
                         button = event.get("button", "left")
                         duration = event.get("duration", 0)
                         line = f"T{event_time:.3f}: hold {button} ({x}, {y}) {duration:.3f}s"
                     elif event_type == "drag":
-                        start_x = event.get("start_x")
-                        start_y = event.get("start_y")
-                        end_x = event.get("end_x")
-                        end_y = event.get("end_y")
+                        start_x = _format_coord(event.get("start_x"), "x")
+                        start_y = _format_coord(event.get("start_y"), "y")
+                        end_x = _format_coord(event.get("end_x"), "x")
+                        end_y = _format_coord(event.get("end_y"), "y")
                         duration = event.get("duration", 0)
                         button = event.get("button", "left")
                         line = f"T{event_time:.3f}: drag {button} ({start_x}, {start_y}) -> ({end_x}, {end_y}) {duration:.3f}s"
@@ -1213,15 +1239,15 @@ def start_gui() -> int:
         x1 = y1 = x2 = y2 = duration = key = ""
 
         if event.get("type") in ("click", "hold"):
-            x1 = "" if event.get("x") is None else str(int(event.get("x")))
-            y1 = "" if event.get("y") is None else str(int(event.get("y")))
+            x1 = _format_coord(event.get("x"), "x")
+            y1 = _format_coord(event.get("y"), "y")
             if event.get("type") == "hold":
                 duration = f"{float(event.get('duration', 0)):.3f}"
         elif event.get("type") == "drag":
-            x1 = "" if event.get("start_x") is None else str(int(event.get("start_x")))
-            y1 = "" if event.get("start_y") is None else str(int(event.get("start_y")))
-            x2 = "" if event.get("end_x") is None else str(int(event.get("end_x")))
-            y2 = "" if event.get("end_y") is None else str(int(event.get("end_y")))
+            x1 = _format_coord(event.get("start_x"), "x")
+            y1 = _format_coord(event.get("start_y"), "y")
+            x2 = _format_coord(event.get("end_x"), "x")
+            y2 = _format_coord(event.get("end_y"), "y")
             duration = f"{float(event.get('duration', 0)):.3f}"
         elif event.get("type") in ("key_press", "key_release"):
             key = str(event.get("key", ""))
@@ -1235,15 +1261,15 @@ def start_gui() -> int:
         action = step.get("action")
 
         if action in ("click", "hold"):
-            x1 = "" if step.get("x") is None else str(int(step.get("x")))
-            y1 = "" if step.get("y") is None else str(int(step.get("y")))
+            x1 = _format_coord(step.get("x"), "x")
+            y1 = _format_coord(step.get("y"), "y")
             if action == "hold":
                 duration = f"{float(step.get('duration', 0)):.3f}"
         elif action == "drag":
-            x1 = "" if step.get("start_x") is None else str(int(step.get("start_x")))
-            y1 = "" if step.get("start_y") is None else str(int(step.get("start_y")))
-            x2 = "" if step.get("end_x") is None else str(int(step.get("end_x")))
-            y2 = "" if step.get("end_y") is None else str(int(step.get("end_y")))
+            x1 = _format_coord(step.get("start_x"), "x")
+            y1 = _format_coord(step.get("start_y"), "y")
+            x2 = _format_coord(step.get("end_x"), "x")
+            y2 = _format_coord(step.get("end_y"), "y")
             duration = f"{float(step.get('duration', 0)):.3f}"
         elif action == "key":
             key = str(step.get("key", ""))
@@ -1302,11 +1328,19 @@ def start_gui() -> int:
         event_type = event.get("type", "")
         
         if event_type == "click":
-            return f"({event.get('x')}, {event.get('y')}) [{event.get('button', 'left')}]"
+            x = _format_coord(event.get("x"), "x")
+            y = _format_coord(event.get("y"), "y")
+            return f"({x}, {y}) [{event.get('button', 'left')}]"
         elif event_type == "drag":
-            return f"({event.get('start_x')}, {event.get('start_y')}) -> ({event.get('end_x')}, {event.get('end_y')})"
+            start_x = _format_coord(event.get("start_x"), "x")
+            start_y = _format_coord(event.get("start_y"), "y")
+            end_x = _format_coord(event.get("end_x"), "x")
+            end_y = _format_coord(event.get("end_y"), "y")
+            return f"({start_x}, {start_y}) -> ({end_x}, {end_y})"
         elif event_type == "hold":
-            return f"({event.get('x')}, {event.get('y')}) for {event.get('duration', 0):.2f}s"
+            x = _format_coord(event.get("x"), "x")
+            y = _format_coord(event.get("y"), "y")
+            return f"({x}, {y}) for {event.get('duration', 0):.2f}s"
         elif event_type == "key_press":
             return f"Press '{event.get('key', '')}'"
         elif event_type == "key_release":
@@ -1319,9 +1353,15 @@ def start_gui() -> int:
         action = step.get("action", "")
         
         if action == "click":
-            return f"({step.get('x')}, {step.get('y')})"
+            x = _format_coord(step.get("x"), "x")
+            y = _format_coord(step.get("y"), "y")
+            return f"({x}, {y})"
         elif action == "drag":
-            return f"({step.get('start_x')}, {step.get('start_y')}) -> ({step.get('end_x')}, {step.get('end_y')})"
+            start_x = _format_coord(step.get("start_x"), "x")
+            start_y = _format_coord(step.get("start_y"), "y")
+            end_x = _format_coord(step.get("end_x"), "x")
+            end_y = _format_coord(step.get("end_y"), "y")
+            return f"({start_x}, {start_y}) -> ({end_x}, {end_y})"
         elif action == "key":
             return f"Key: {step.get('key', '')}"
         else:
@@ -1852,18 +1892,18 @@ def start_gui() -> int:
                 def current_value() -> str:
                     if current_type in ("click", "hold"):
                         if column_key == "x1":
-                            return "" if current_event.get("x") is None else str(int(current_event.get("x")))
+                            return _format_coord(current_event.get("x"), "x")
                         if column_key == "y1":
-                            return "" if current_event.get("y") is None else str(int(current_event.get("y")))
+                            return _format_coord(current_event.get("y"), "y")
                     if current_type == "drag":
                         if column_key == "x1":
-                            return "" if current_event.get("start_x") is None else str(int(current_event.get("start_x")))
+                            return _format_coord(current_event.get("start_x"), "x")
                         if column_key == "y1":
-                            return "" if current_event.get("start_y") is None else str(int(current_event.get("start_y")))
+                            return _format_coord(current_event.get("start_y"), "y")
                         if column_key == "x2":
-                            return "" if current_event.get("end_x") is None else str(int(current_event.get("end_x")))
+                            return _format_coord(current_event.get("end_x"), "x")
                         if column_key == "y2":
-                            return "" if current_event.get("end_y") is None else str(int(current_event.get("end_y")))
+                            return _format_coord(current_event.get("end_y"), "y")
                     if column_key == "duration":
                         return f"{float(current_event.get('duration', 0)):.3f}"
                     return ""
@@ -1881,18 +1921,18 @@ def start_gui() -> int:
                                 return
                             if current_type in ("click", "hold"):
                                 if column_key == "x1":
-                                    current_event["x"] = parsed
+                                    current_event["x"] = _absolute_to_relative(parsed, "x")
                                 elif column_key == "y1":
-                                    current_event["y"] = parsed
+                                    current_event["y"] = _absolute_to_relative(parsed, "y")
                             elif current_type == "drag":
                                 if column_key == "x1":
-                                    current_event["start_x"] = parsed
+                                    current_event["start_x"] = _absolute_to_relative(parsed, "x")
                                 elif column_key == "y1":
-                                    current_event["start_y"] = parsed
+                                    current_event["start_y"] = _absolute_to_relative(parsed, "y")
                                 elif column_key == "x2":
-                                    current_event["end_x"] = parsed
+                                    current_event["end_x"] = _absolute_to_relative(parsed, "x")
                                 elif column_key == "y2":
-                                    current_event["end_y"] = parsed
+                                    current_event["end_y"] = _absolute_to_relative(parsed, "y")
                         refresh_edit_tree()
                     except ValueError:
                         status_var.set("Invalid input, reverted")
@@ -1944,18 +1984,18 @@ def start_gui() -> int:
                 def current_value() -> str:
                     if action in ("click", "hold"):
                         if column_key == "x1":
-                            return "" if step.get("x") is None else str(int(step.get("x")))
+                            return _format_coord(step.get("x"), "x")
                         if column_key == "y1":
-                            return "" if step.get("y") is None else str(int(step.get("y")))
+                            return _format_coord(step.get("y"), "y")
                     if action == "drag":
                         if column_key == "x1":
-                            return "" if step.get("start_x") is None else str(int(step.get("start_x")))
+                            return _format_coord(step.get("start_x"), "x")
                         if column_key == "y1":
-                            return "" if step.get("start_y") is None else str(int(step.get("start_y")))
+                            return _format_coord(step.get("start_y"), "y")
                         if column_key == "x2":
-                            return "" if step.get("end_x") is None else str(int(step.get("end_x")))
+                            return _format_coord(step.get("end_x"), "x")
                         if column_key == "y2":
-                            return "" if step.get("end_y") is None else str(int(step.get("end_y")))
+                            return _format_coord(step.get("end_y"), "y")
                     if column_key == "duration":
                         return f"{float(step.get('duration', 0)):.3f}"
                     return ""
@@ -1973,18 +2013,18 @@ def start_gui() -> int:
                                 return
                             if action in ("click", "hold"):
                                 if column_key == "x1":
-                                    step["x"] = parsed
+                                    step["x"] = _absolute_to_relative(parsed, "x")
                                 elif column_key == "y1":
-                                    step["y"] = parsed
+                                    step["y"] = _absolute_to_relative(parsed, "y")
                             elif action == "drag":
                                 if column_key == "x1":
-                                    step["start_x"] = parsed
+                                    step["start_x"] = _absolute_to_relative(parsed, "x")
                                 elif column_key == "y1":
-                                    step["start_y"] = parsed
+                                    step["start_y"] = _absolute_to_relative(parsed, "y")
                                 elif column_key == "x2":
-                                    step["end_x"] = parsed
+                                    step["end_x"] = _absolute_to_relative(parsed, "x")
                                 elif column_key == "y2":
-                                    step["end_y"] = parsed
+                                    step["end_y"] = _absolute_to_relative(parsed, "y")
                         refresh_edit_tree()
                     except ValueError:
                         status_var.set("Invalid input, reverted")
@@ -2043,6 +2083,96 @@ def start_gui() -> int:
         repo_url = "https://github.com/mikiisayakaa/EndfieldHelper.git"
         if not webbrowser.open(repo_url):
             messagebox.showinfo(i18n.t("help_title"), repo_url)
+
+    def _apply_screen_transform_from_vars() -> None:
+        try:
+            width = int(float(screen_width_var.get().strip()))
+            height = int(float(screen_height_var.get().strip()))
+            offset_x = int(float(screen_offset_x_var.get().strip()))
+            offset_y = int(float(screen_offset_y_var.get().strip()))
+        except ValueError:
+            messagebox.showerror(i18n.t("error"), i18n.t("screen_invalid"))
+            return
+
+        set_screen_transform(width, height, offset_x, offset_y)
+        status_var.set(
+            i18n.t(
+                "screen_applied",
+                width=width,
+                height=height,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+        )
+
+    def _load_user_settings() -> None:
+        if not user_settings_path.exists():
+            return
+        try:
+            data = json.loads(user_settings_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            app_logger.error(f"Failed to read user settings: {exc}")
+            return
+        if isinstance(data, dict):
+            screen_width_var.set(str(data.get("screen_width", screen_width_var.get())))
+            screen_height_var.set(str(data.get("screen_height", screen_height_var.get())))
+            screen_offset_x_var.set(str(data.get("screen_offset_x", screen_offset_x_var.get())))
+            screen_offset_y_var.set(str(data.get("screen_offset_y", screen_offset_y_var.get())))
+
+    def _save_user_settings() -> None:
+        try:
+            payload = {
+                "screen_width": int(float(screen_width_var.get().strip())),
+                "screen_height": int(float(screen_height_var.get().strip())),
+                "screen_offset_x": int(float(screen_offset_x_var.get().strip())),
+                "screen_offset_y": int(float(screen_offset_y_var.get().strip())),
+            }
+        except ValueError:
+            return
+        try:
+            user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            user_settings_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            app_logger.error(f"Failed to save user settings: {exc}")
+
+    def show_screen_settings() -> None:
+        _load_user_settings()
+        dialog = tk.Toplevel(root)
+        dialog.title(i18n.t("coord_settings"))
+        dialog.transient(root)
+        dialog.grab_set()
+
+        def add_row(parent: tk.Widget, label: str, var: tk.StringVar) -> None:
+            row = tk.Frame(parent)
+            row.pack(fill=tk.X, pady=2)
+            tk.Label(row, text=label, width=10, anchor=tk.W).pack(side=tk.LEFT)
+            entry = tk.Entry(row, textvariable=var)
+            entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        body = tk.Frame(dialog, padx=10, pady=10)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        add_row(body, i18n.t("screen_width"), screen_width_var)
+        add_row(body, i18n.t("screen_height"), screen_height_var)
+        add_row(body, i18n.t("screen_offset_x"), screen_offset_x_var)
+        add_row(body, i18n.t("screen_offset_y"), screen_offset_y_var)
+
+        button_row = tk.Frame(dialog, padx=10, pady=8)
+        button_row.pack(fill=tk.X)
+
+        def on_apply() -> None:
+            _apply_screen_transform_from_vars()
+            _save_user_settings()
+            dialog.destroy()
+
+        ttk.Button(button_row, text=i18n.t("apply"), command=on_apply).pack(side=tk.RIGHT)
+        ttk.Button(button_row, text=i18n.t("cancel"), command=dialog.destroy).pack(side=tk.RIGHT, padx=(0, 6))
+
+    _load_user_settings()
+    _apply_screen_transform_from_vars()
 
     def set_controls(recording: bool, is_running: bool) -> None:
         start_button.config(
@@ -2150,24 +2280,35 @@ def start_gui() -> int:
     )
     ui_elements['run_unified_button'] = (run_unified_button, 'run_config', True)
     run_unified_button.pack(side=tk.LEFT, padx=4)
-    # Add Help button at row 0 level
+    # Help and coordinate settings row
+    coord_button_frame = tk.Frame(root)
+    coord_button_frame.grid(row=1, column=0, sticky="we", **padding)
     help_unified_button = ttk.Button(
-        config_frame,
+        coord_button_frame,
         text=i18n.t("help"),
         command=show_help,
         width=8,
         style="Modern.TButton",
     )
     ui_elements['help_unified_button'] = (help_unified_button, 'help', True)
-    help_unified_button.pack(side=tk.LEFT, padx=(4, 0))
+    help_unified_button.pack(side=tk.LEFT, padx=(0, 4))
+    coord_settings_button = ttk.Button(
+        coord_button_frame,
+        text=i18n.t("coord_settings"),
+        command=show_screen_settings,
+        width=12,
+        style="Modern.TButton",
+    )
+    ui_elements['coord_settings_button'] = (coord_settings_button, 'coord_settings', True)
+    coord_settings_button.pack(side=tk.LEFT, padx=(4, 0))
 
     # Comment text frame
     comment_label = tk.Label(root, text=i18n.t("comment"), font=("Arial", 9))
     ui_elements['comment_label'] = (comment_label, 'comment', False)
-    comment_label.grid(row=1, column=0, sticky="w", **padding)
+    comment_label.grid(row=2, column=0, sticky="w", **padding)
     
     comment_frame = tk.Frame(root)
-    comment_frame.grid(row=2, column=0, sticky="nsew", **padding)
+    comment_frame.grid(row=3, column=0, sticky="nsew", **padding)
     comment_scrollbar = tk.Scrollbar(comment_frame, orient=tk.VERTICAL)
     comment_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     comment_text = tk.Text(
@@ -2196,7 +2337,7 @@ def start_gui() -> int:
 
     # Notebook for two modes: Recording and Composite
     notebook = ttk.Notebook(root)
-    notebook.grid(row=3, column=0, sticky="nsew", **padding)
+    notebook.grid(row=4, column=0, sticky="nsew", **padding)
 
     # ===== TAB 1: Recording Mode =====
     recording_tab = tk.Frame(notebook)
@@ -2369,7 +2510,7 @@ def start_gui() -> int:
     edit_tree.bind("<Double-Button-1>", on_edit_double_click)
 
     log_frame = tk.Frame(root)
-    log_frame.grid(row=4, column=0, sticky="nsew", **padding)
+    log_frame.grid(row=5, column=0, sticky="nsew", **padding)
     log_scrollbar = tk.Scrollbar(log_frame, orient=tk.VERTICAL)
     log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     log_text = tk.Text(
@@ -2383,7 +2524,7 @@ def start_gui() -> int:
     log_scrollbar.config(command=log_text.yview)
 
     status_frame = tk.Frame(root)
-    status_frame.grid(row=5, column=0, sticky="we", **padding)
+    status_frame.grid(row=6, column=0, sticky="we", **padding)
     tk.Label(status_frame, textvariable=status_var).pack(side=tk.LEFT)
     tk.Label(status_frame, textvariable=position_var).pack(side=tk.RIGHT)
     tk.Label(status_frame, textvariable=click_hint_var, fg="red", width=6).pack(side=tk.RIGHT)
@@ -2415,7 +2556,7 @@ def start_gui() -> int:
 
     config_list_frame = tk.LabelFrame(root, text=i18n.t("config_list"), padx=4, pady=4)
     ui_elements['config_list_frame'] = (config_list_frame, 'config_list', False)
-    config_list_frame.grid(row=1, column=1, rowspan=5, sticky="nsew", **padding)
+    config_list_frame.grid(row=1, column=1, rowspan=6, sticky="nsew", **padding)
     config_list_scrollbar = tk.Scrollbar(config_list_frame, orient=tk.VERTICAL)
     config_list_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     

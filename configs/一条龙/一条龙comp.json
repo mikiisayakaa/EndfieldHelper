@@ -2,12 +2,6 @@
   "type": "composite",
   "configs": [
     {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\倒货\\武陵倒货comp.json"
-    },
-    {
-      "config": "D:\\Projects\\endfieldhelper\\configs\\个人好友助力.json"
-    },
-    {
       "config": "D:\\Projects\\endfieldhelper\\configs\\基建快递\\谷地派单.json"
     },
     {

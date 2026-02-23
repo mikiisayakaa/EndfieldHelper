@@ -12,16 +12,23 @@ TRANSLATIONS = {
         # Main labels
         "config": "Config",
         "comment": "Comment",
+        "screen_width": "Width",
+        "screen_height": "Height",
+        "screen_offset_x": "Offset X",
+        "screen_offset_y": "Offset Y",
         
         # Buttons - Main
         "start_recording": "Start Recording",
         "stop": "Stop",
         "run_config": "Run Config",
         "help": "Help",
+        "coord_settings": "Coordinates",
         "open": "Open",
         "open_folder": "Open Folder",
         "refresh": "Reload",
         "save": "Save",
+        "apply": "Apply",
+        "cancel": "Cancel",
         
         # Buttons - Composite
         "save_composite": "Save Composite",
@@ -72,6 +79,8 @@ TRANSLATIONS = {
         "time_offset_success": "Applied time offset {delta}s to this and {count} following step(s)",
         "no_config_loaded": "No config loaded",
         "load_config_first": "Please load a config first",
+        "screen_invalid": "Please enter valid integers for width, height, and offsets.",
+        "screen_applied": "Applied: {width}x{height} offset=({offset_x}, {offset_y})",
         
         # Instructions
         "composite_instructions": "Double-click configs from right panel to add • Double-click/Del to remove • ↑↓ to reorder",
@@ -108,8 +117,8 @@ TRANSLATIONS = {
             "\n"
             "While recording, press Ctrl+X to stop. The config will be saved to the path in the config field.\n"
             "\n"
-            "Mouse click steps are recorded in absolute screen pixel coordinates, so they are NOT portable across devices. "
-            "The provided configs were recorded on a 2560x1600 display.\n"
+            "Mouse click steps are recorded in relative coordinates. Playback uses: relative * screen size + offset. "
+            "Set your screen size and offset in the Coordinates dialog.\n"
             "\n"
             "2. Ctrl+Shift+S auto-select elastic goods (OCR): When recording, enter the elastic goods purchase screen and drag "
             "the scrollbar so all items are visible. Press this hotkey to capture the goods, read prices, and click the biggest discount. "
@@ -179,16 +188,23 @@ TRANSLATIONS = {
         # Main labels
         "config": "配置",
         "comment": "备注",
+        "screen_width": "宽度",
+        "screen_height": "高度",
+        "screen_offset_x": "偏移X",
+        "screen_offset_y": "偏移Y",
         
         # Buttons - Main
         "start_recording": "开始录制",
         "stop": "停止",
         "run_config": "运行配置",
         "help": "帮助",
+        "coord_settings": "坐标设置",
         "open": "打开",
         "open_folder": "打开文件夹",
         "refresh": "重新加载",
         "save": "保存",
+        "apply": "应用",
+        "cancel": "取消",
         
         # Buttons - Composite
         "save_composite": "保存组合配置",
@@ -239,6 +255,8 @@ TRANSLATIONS = {
         "time_offset_success": "已应用 {delta}s 时间偏移到此步骤及其后的 {count} 个步骤",
         "no_config_loaded": "未加载配置",
         "load_config_first": "请先加载配置",
+        "screen_invalid": "请输入有效的宽度、高度和偏移整数。",
+        "screen_applied": "已应用：{width}x{height} 偏移=({offset_x}, {offset_y})",
         
         # Instructions
         "composite_instructions": "从右边面板双击配置添加 • 双击/删除键移除 • ↑↓重新排序",
@@ -273,7 +291,7 @@ TRANSLATIONS = {
             "\n"
             "录制开始后，Ctrl+X快捷键退出录制，config会自动保存到配置栏的路径中。\n"
             "\n"
-            "config保存的鼠标左键操作都是基于屏幕空间像素坐标的，因此不同的设备之间无法通用，需要自行录制。提供的配置文件是在(2560,1600)大小的电脑上录制的。\n"
+            "config保存的鼠标操作使用相对坐标，回放公式：相对坐标 * 分辨率 + 偏移。请在坐标设置中填入当前分辨率和偏移。\n"
             "\n"
             "2. Ctrl+Shift+S自动选择弹性物资：用于自动倒货的OCR功能，录制状态下，在进入弹性物资购买界面后，拖动滚动条确保所有可购买物资都处于界面中，这时按这一快捷键会自动截取物资的图片并读取其价格，选择降价幅度最大的物资进行点击，稍等1秒会完成点击，如果没有点击货物说明识别出问题了。点击货物后你可以继续录制操作。左侧边栏的选项分别对应谷地和武陵的识别模板，在开始录制前要选择正确的模板，否则识别结果不对。\n"
             "\n"

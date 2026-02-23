@@ -1,0 +1,21 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\景玉谷_大蘑菇_上右\\地图_景玉谷_大蘑菇_上右.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\OCR\\collection_max_ocr.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\景玉谷_大蘑菇_上右\\前往传送点_景玉谷_大蘑菇_上右.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\景玉谷_大蘑菇_上右\\前往采集点_景玉谷_大蘑菇_上右.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\返回帝江号.json"
+    }
+  ],
+  "comment": ""
+}

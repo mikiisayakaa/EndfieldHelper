@@ -1,76 +1,21 @@
 {
   "timeline": [
     {
-      "time": 1.047,
-      "type": "drag",
-      "start_x": 0.517969,
-      "start_y": 0.56,
-      "end_x": 0.499609,
-      "end_y": 0.499375,
-      "button": "left",
-      "duration": 0.09399999998277053
-    },
-    {
-      "time": 1.625,
-      "type": "key_press",
-      "key": "y"
-    },
-    {
-      "time": 1.687,
-      "type": "key_release",
-      "key": "y"
-    },
-    {
-      "time": 2.922,
-      "type": "click",
-      "x": 0.098437,
-      "y": 0.3925,
-      "button": "left"
-    },
-    {
-      "time": 3.687,
-      "type": "click",
-      "x": 0.529297,
-      "y": 0.214375,
-      "button": "left"
-    },
-    {
-      "time": 4.312,
-      "type": "click",
-      "x": 0.612109,
-      "y": 0.619375,
-      "button": "left"
-    },
-    {
-      "time": 5.984,
-      "type": "click",
-      "x": 0.65,
-      "y": 0.476875,
-      "button": "left"
-    },
-    {
-      "time": 7.625,
-      "type": "click",
-      "x": 0.444531,
-      "y": 0.1025,
-      "button": "left"
-    },
-    {
-      "time": 9.578,
+      "time": 0.5779999999999994,
       "type": "click",
       "x": 0.130859,
       "y": 0.375,
       "button": "left"
     },
     {
-      "time": 11.078,
+      "time": 2.0779999999999994,
       "type": "click",
       "x": 0.761328,
       "y": 0.623125,
       "button": "left"
     },
     {
-      "time": 14.109,
+      "time": 5.109,
       "type": "hold",
       "x": 0.383203,
       "y": 0.435625,
@@ -78,19 +23,19 @@
       "duration": 1.2190000000409782
     },
     {
-      "time": 16.156,
+      "time": 7.155999999999999,
       "type": "click",
       "x": 0.455469,
       "y": 0.47875,
       "button": "left"
     },
     {
-      "time": 21.422,
+      "time": 12.422,
       "type": "key_press",
       "key": "ctrl_l"
     },
     {
-      "time": 21.562,
+      "time": 12.562000000000001,
       "type": "key_press",
       "key": "\u0018"
     }

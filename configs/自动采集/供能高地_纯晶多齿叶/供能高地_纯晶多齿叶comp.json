@@ -1,0 +1,21 @@
+{
+  "type": "composite",
+  "configs": [
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\供能高地_纯晶多齿叶\\地图_供能高地_纯晶多齿叶.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\OCR\\collection_max_ocr.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\供能高地_纯晶多齿叶\\前往传送点_供能高地_纯晶多齿叶.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\供能高地_纯晶多齿叶\\前往采集点_供能高地_纯晶多齿叶.json"
+    },
+    {
+      "config": "D:\\Projects\\endfieldhelper\\configs\\自动采集\\返回帝江号.json"
+    }
+  ],
+  "comment": ""
+}

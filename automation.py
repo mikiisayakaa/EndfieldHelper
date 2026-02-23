@@ -12,27 +12,24 @@ import pyautogui
 from pynput import keyboard, mouse
 
 
-_SCREEN_SIZE: tuple[int, int] | None = None
+_SCREEN_SIZE: tuple[int, int] = (2560, 1600)
+_SCREEN_OFFSET: tuple[int, int] = (0, 0)
 
 
-def init_screen_size() -> tuple[int, int]:
-    global _SCREEN_SIZE
-    if _SCREEN_SIZE is None:
-        try:
-            size = pyautogui.size()
-            width, height = int(size.width), int(size.height)
-        except Exception:
-            try:
-                width = int(ctypes.windll.user32.GetSystemMetrics(0))
-                height = int(ctypes.windll.user32.GetSystemMetrics(1))
-            except Exception:
-                width, height = 1, 1
-        _SCREEN_SIZE = (max(1, width), max(1, height))
-    return _SCREEN_SIZE
+def set_screen_transform(width: int, height: int, offset_x: int = 0, offset_y: int = 0) -> None:
+    global _SCREEN_SIZE, _SCREEN_OFFSET
+    width = max(1, int(width))
+    height = max(1, int(height))
+    _SCREEN_SIZE = (width, height)
+    _SCREEN_OFFSET = (int(offset_x), int(offset_y))
 
 
 def get_screen_size() -> tuple[int, int]:
-    return init_screen_size()
+    return _SCREEN_SIZE
+
+
+def get_screen_offset() -> tuple[int, int]:
+    return _SCREEN_OFFSET
 
 
 def _relative_to_absolute(value: float, max_value: int) -> int:
@@ -41,7 +38,11 @@ def _relative_to_absolute(value: float, max_value: int) -> int:
 
 def _coords_relative_to_absolute(x_rel: float, y_rel: float) -> tuple[int, int]:
     width, height = get_screen_size()
-    return _relative_to_absolute(x_rel, width), _relative_to_absolute(y_rel, height)
+    offset_x, offset_y = get_screen_offset()
+    return (
+        _relative_to_absolute(x_rel, width) + offset_x,
+        _relative_to_absolute(y_rel, height) + offset_y,
+    )
 
 
 def load_steps(config_path: Path) -> dict:
@@ -111,7 +112,8 @@ class Recorder:
 
     def _to_relative(self, x: int, y: int) -> tuple[float, float]:
         width, height = get_screen_size()
-        return round(x / width, 6), round(y / height, 6)
+        offset_x, offset_y = get_screen_offset()
+        return round((x - offset_x) / width, 6), round((y - offset_y) / height, 6)
     
     def _elapsed_time(self) -> float:
         """Get elapsed time since recording started."""
@@ -511,7 +513,6 @@ def run_timeline(
     wait_for_events: bool = False,
 ) -> None:
     """Execute timeline using main thread scheduling + spawned worker threads for each event."""
-    get_screen_size()
     timeline = data.get("timeline", [])
     goods_template = data.get("goods_template")  # Get template from config
     
