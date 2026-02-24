@@ -8,40 +8,40 @@
       "button": "left"
     },
     {
-      "time": 3.406,
+      "time": 5.406000000000001,
       "type": "click",
-      "x": 0.501953,
-      "y": 0.83625,
+      "x": 0.485156,
+      "y": 0.90875,
       "button": "left"
     },
     {
-      "time": 5.141,
+      "time": 7.141,
       "type": "click",
       "x": 0.96875,
       "y": 0.29125,
       "button": "left"
     },
     {
-      "time": 7.344,
+      "time": 9.344000000000001,
       "type": "click",
       "x": 0.896094,
       "y": 0.5975,
       "button": "left"
     },
     {
-      "time": 8.875,
+      "time": 10.875,
       "type": "click",
       "x": 0.96875,
       "y": 0.038125,
       "button": "left"
     },
     {
-      "time": 10.078,
+      "time": 12.078,
       "type": "key_press",
       "key": "ctrl_l"
     },
     {
-      "time": 10.203,
+      "time": 12.203,
       "type": "key_press",
       "key": "\u0018"
     }

@@ -1776,17 +1776,17 @@ def start_gui() -> int:
             combo.bind("<Escape>", cancel_edit)
             combo.bind("<FocusOut>", lambda e: save_and_close())
 
-        def parse_int(value: str) -> int | None:
-            value = value.strip()
-            if not value:
-                return None
-            return int(float(value))
-
         def parse_float(value: str) -> float | None:
             value = value.strip()
             if not value:
                 return None
             return float(value)
+
+        def parse_coord(value: str, axis: str) -> float | None:
+            parsed = parse_float(value)
+            if parsed is None:
+                return None
+            return _absolute_to_relative(int(round(parsed)), axis)
 
         if edit_config_type == "timeline":
             timeline = edit_data.get("timeline", [])
@@ -1880,23 +1880,23 @@ def start_gui() -> int:
                                 return
                             current_event["duration"] = round(parsed, 3)
                         else:
-                            parsed = parse_int(value)
+                            parsed = parse_coord(value, "x" if column_key in ("x1", "x2") else "y")
                             if parsed is None:
                                 return
                             if current_type in ("click", "hold"):
                                 if column_key == "x1":
-                                    current_event["x"] = _absolute_to_relative(parsed, "x")
+                                    current_event["x"] = parsed
                                 elif column_key == "y1":
-                                    current_event["y"] = _absolute_to_relative(parsed, "y")
+                                    current_event["y"] = parsed
                             elif current_type == "drag":
                                 if column_key == "x1":
-                                    current_event["start_x"] = _absolute_to_relative(parsed, "x")
+                                    current_event["start_x"] = parsed
                                 elif column_key == "y1":
-                                    current_event["start_y"] = _absolute_to_relative(parsed, "y")
+                                    current_event["start_y"] = parsed
                                 elif column_key == "x2":
-                                    current_event["end_x"] = _absolute_to_relative(parsed, "x")
+                                    current_event["end_x"] = parsed
                                 elif column_key == "y2":
-                                    current_event["end_y"] = _absolute_to_relative(parsed, "y")
+                                    current_event["end_y"] = parsed
                         refresh_edit_tree()
                     except ValueError:
                         status_var.set("Invalid input, reverted")
@@ -1972,23 +1972,23 @@ def start_gui() -> int:
                                 return
                             step["duration"] = round(parsed, 3)
                         else:
-                            parsed = parse_int(value)
+                            parsed = parse_coord(value, "x" if column_key in ("x1", "x2") else "y")
                             if parsed is None:
                                 return
                             if action in ("click", "hold"):
                                 if column_key == "x1":
-                                    step["x"] = _absolute_to_relative(parsed, "x")
+                                    step["x"] = parsed
                                 elif column_key == "y1":
-                                    step["y"] = _absolute_to_relative(parsed, "y")
+                                    step["y"] = parsed
                             elif action == "drag":
                                 if column_key == "x1":
-                                    step["start_x"] = _absolute_to_relative(parsed, "x")
+                                    step["start_x"] = parsed
                                 elif column_key == "y1":
-                                    step["start_y"] = _absolute_to_relative(parsed, "y")
+                                    step["start_y"] = parsed
                                 elif column_key == "x2":
-                                    step["end_x"] = _absolute_to_relative(parsed, "x")
+                                    step["end_x"] = parsed
                                 elif column_key == "y2":
-                                    step["end_y"] = _absolute_to_relative(parsed, "y")
+                                    step["end_y"] = parsed
                         refresh_edit_tree()
                     except ValueError:
                         status_var.set("Invalid input, reverted")
